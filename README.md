@@ -1,10 +1,10 @@
 <div align="center">
 
-  <!-- Logo Utama Gadun / Gadung -->
-  <img src="./gadun.svg" alt="Gadun - Gadun Logo" width="130" height="auto" />
+  <!-- Logo Utama Gosaldo -->
+  <img src="./gosaldo.svg" alt="Gosaldo Logo" width="130" height="auto" />
 
-  # Halo, Saya Gadun 👋
-  ### Algorithmic Trading Engineer & Arsitek **GADUN** (*Gudang Mesin Uang Masa Depan*)
+  # Halo, Saya Gosaldo 👋
+  ### Algorithmic Trading Engineer & Arsitek **GOSALDO** (*Gudang Mesin Uang Masa Depan*)
 
   <p align="center">
     <i>Menjembatani pasar finansial (XAUUSD & Major Pairs), kecerdasan rekayasa, dan otomasi perangkat lunak berskala tinggi.</i>
@@ -19,16 +19,16 @@
 
   <!-- Dynamic Typing SVG -->
   <a href="https://git.io/typing-svg">
-    <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=600&size=20&duration=3000&pause=1000&color=00B4D8&center=true&vCenter=true&width=700&lines=Membangun+GADUNG%3A+Gudang+Mesin+Uang+Masa+Depan;Expert+Advisor+MetaTrader+5+(MQL5)+Berbasis+AI;Sistem+Manajemen+Risiko+Berlapis+%26+Replikasi+Unit;Otomasi+Bot+Telegram+%26+Web+Dashboard+Real-Time" alt="Typing SVG" />
+    <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=600&size=20&duration=3000&pause=1000&color=00B4D8&center=true&vCenter=true&width=700&lines=Membangun+GOSALDO%3A+Gudang+Mesin+Uang+Masa+Depan;Expert+Advisor+MetaTrader+5+(MQL5)+Berbasis+AI;Sistem+Manajemen+Risiko+Berlapis+%26+Replikasi+Unit;Otomasi+Bot+Telegram+%26+Web+Dashboard+Real-Time" alt="Typing SVG" />
   </a>
 
 </div>
 
 ---
 
-### 🏛️ Visi Utama: GADUN (*Gudang Mesin Uang Masa Depan*)
+### 🏛️ Visi Utama: GOSALDO (*Gudang Mesin Uang Masa Depan*)
 
-**Gadun** adalah ekosistem *algorithmic trading* generasi baru yang dirancang untuk menggantikan robot indikator statis dengan **eksekusi cerdas berbasis AI di MetaTrader 5 (MT5)**. Berfokus pada instrumen **XAUUSD (Emas)** dan *pair* utama, setiap "mesin uang" di dalam gudang ini bekerja di bawah protokol manajemen risiko yang ketat:
+**Gosaldo** adalah ekosistem *algorithmic trading* generasi baru yang dirancang untuk menggantikan robot indikator statis dengan **eksekusi cerdas berbasis AI di MetaTrader 5 (MT5)**. Berfokus pada instrumen **XAUUSD (Emas)** dan *pair* utama, setiap "mesin uang" di dalam gudang ini bekerja di bawah protokol manajemen risiko yang ketat:
 
 * 🧠 **Filter Rezim Pasar Berbasis AI (ONNX & Python):** Deteksi kondisi pasar secara *real-time* (*Trending*, *Sideways*, atau *Volatilitas Tinggi*) yang ditanamkan langsung ke dalam MQL5 melalui model ONNX maupun integrasi API.
 * 🛡️ **Kerangka Manajemen Risiko Berlapis:** Dilengkapi batas peringatan *drawdown* harian, *hard equity stop* (batas rugi harian absolut), serta eksekusi *Dynamic TP/SL* otomatis demi menjaga ketahanan modal.
@@ -45,13 +45,13 @@
 
 ---
 
-### 🗺️ Peta Jalan Ekosistem GADUN (Roadmap)
+### 🗺️ Peta Jalan Ekosistem GOSALDO (Roadmap)
 
-Peta jalan ini merupakan kerangka kerja aktif yang juga ditampilkan secara interaktif pada *website* resmi **Gadun**:
+Peta jalan ini merupakan kerangka kerja aktif yang juga ditampilkan secara interaktif pada *website* resmi **Gosaldo**:
 
 | Fase | Fokus Utama | Target Pengembangan | Status |
 | :--- | :--- | :--- | :---: |
-| **Fase 1** | **Fondasi & Risiko Inti** | Identitas visual (`gadun.svg`), modul MQL5 *Multi-Layer Risk*, & rilis Website Peta Jalan v1.0. | 🟢 *Berjalan* |
+| **Fase 1** | **Fondasi & Risiko Inti** | Identitas visual (`gosaldo.svg`), modul MQL5 *Multi-Layer Risk*, & rilis Website Peta Jalan v1.0. | 🟢 *Berjalan* |
 | **Fase 2** | **Integrasi AI & Validasi** | Pelatihan data *tick* XAUUSD, integrasi filter ONNX ke MT5, & verifikasi akun *live* (Myfxbook/MQL5). | 🟡 *Segera* |
 | **Fase 3** | **Infrastruktur Gudang** | Sistem lisensi akun MT5 berbasis *cloud*, sinkronisasi TP/SL otomatis, & uji beta replikasi unit. | 🔵 *Terencana* |
 | **Fase 4** | **Ekspansi Multi-Mesin** | Diversifikasi mesin (*Gold Scalper*, *Swing AI*, *Low-DD*), *auto-retraining* AI, & portal publik. | 🟣 *Masa Depan* |
@@ -100,7 +100,7 @@ Peta jalan ini merupakan kerangka kerja aktif yang juga ditampilkan secara inter
 ---
 
 ### 🚀 Proyek & Mesin Unggulan
-- 🏛️ **Gadung Core Engine (XAUUSD AI)**: EA MT5 utama dengan filter rezim pasar AI, pembatas *drawdown* harian otomatis, dan manajemen replikasi unit. *(R&D Aktif)*
+- 🏛️ **Gosaldo Core Engine (XAUUSD AI)**: EA MT5 utama dengan filter rezim pasar AI, pembatas *drawdown* harian otomatis, dan manajemen replikasi unit. *(R&D Aktif)*
 - 🛡️ **MT5 Multi-Layer Risk Utility**: Kalkulator *lot* cerdas, eksekusi TP/SL otomatis, dan pengaman ekuitas kumulatif. *(Tahap Pengujian)*
 - 📡 **Market Squeeze & Volatility Detector**: Mesin pendeteksi ledakan volatilitas *multi-timeframe* yang terhubung langsung ke notifikasi Telegram. *(Dalam Pengembangan)*
 - ⚡ **Automated Signal & Webhook Bridge**: Jembatan eksekusi instan berlatensi rendah dari sinyal eksternal/TradingView menuju terminal MT5.
@@ -110,12 +110,12 @@ Peta jalan ini merupakan kerangka kerja aktif yang juga ditampilkan secara inter
 ### 📊 Statistik & Aktivitas GitHub
 
 <p align="center">
-  <img height="185" src="https://github-readme-stats-eight-xi.vercel.app/api?username=gadun&show_icons=true&theme=tokyonight&hide_border=true&count_private=true" alt="GitHub Stats" />
-  <img height="185" src="https://github-readme-stats-eight-xi.vercel.app/api/top-langs/?username=gadun&layout=compact&theme=tokyonight&hide_border=true" alt="Top Languages" />
+  <img height="185" src="https://github-readme-stats-eight-xi.vercel.app/api?username=gosaldo&show_icons=true&theme=tokyonight&hide_border=true&count_private=true" alt="GitHub Stats" />
+  <img height="185" src="https://github-readme-stats-eight-xi.vercel.app/api/top-langs/?username=gosaldo&layout=compact&theme=tokyonight&hide_border=true" alt="Top Languages" />
 </p>
 
 <p align="center">
-  <img src="https://streak-stats.demolab.com/?user=gadun&theme=tokyonight&hide_border=true" alt="GitHub Streak" />
+  <img src="https://streak-stats.demolab.com/?user=gosaldo&theme=tokyonight&hide_border=true" alt="GitHub Streak" />
 </p>
 
 ---
