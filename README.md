@@ -1,13 +1,13 @@
 <div align="center">
 
   <!-- Logo Utama Gadun / Gadung -->
-  <img src="./gadun.svg" alt="Gadun - Gadung Logo" width="130" height="auto" />
+  <img src="./gadun.svg" alt="Gadun - Gadun Logo" width="130" height="auto" />
 
   # Halo, Saya Gadun 👋
-  ### Algorithmic Trading Engineer & Arsitek **GADUNG** (*Gudang Mesin Uang Masa Depan*)
+  ### Algorithmic Trading Engineer & Arsitek **GADUN** (*Gudang Mesin Uang Masa Depan*)
 
   <p align="center">
-    <i>Menjembatani pasar finansial (XAUUSD & Major Pairs), kecerdasan buatan (AI), dan otomasi perangkat lunak berskala tinggi.</i>
+    <i>Menjembatani pasar finansial (XAUUSD & Major Pairs), kecerdasan rekayasa, dan otomasi perangkat lunak berskala tinggi.</i>
   </p>
 
   <p align="center">
@@ -26,9 +26,9 @@
 
 ---
 
-### 🏛️ Visi Utama: GADUNG (*Gudang Mesin Uang Masa Depan*)
+### 🏛️ Visi Utama: GADUN (*Gudang Mesin Uang Masa Depan*)
 
-**Gadung** adalah ekosistem *algorithmic trading* generasi baru yang dirancang untuk menggantikan robot indikator statis dengan **eksekusi cerdas berbasis AI di MetaTrader 5 (MT5)**. Berfokus pada instrumen **XAUUSD (Emas)** dan *pair* utama, setiap "mesin uang" di dalam gudang ini bekerja di bawah protokol manajemen risiko yang ketat:
+**Gadun** adalah ekosistem *algorithmic trading* generasi baru yang dirancang untuk menggantikan robot indikator statis dengan **eksekusi cerdas berbasis AI di MetaTrader 5 (MT5)**. Berfokus pada instrumen **XAUUSD (Emas)** dan *pair* utama, setiap "mesin uang" di dalam gudang ini bekerja di bawah protokol manajemen risiko yang ketat:
 
 * 🧠 **Filter Rezim Pasar Berbasis AI (ONNX & Python):** Deteksi kondisi pasar secara *real-time* (*Trending*, *Sideways*, atau *Volatilitas Tinggi*) yang ditanamkan langsung ke dalam MQL5 melalui model ONNX maupun integrasi API.
 * 🛡️ **Kerangka Manajemen Risiko Berlapis:** Dilengkapi batas peringatan *drawdown* harian, *hard equity stop* (batas rugi harian absolut), serta eksekusi *Dynamic TP/SL* otomatis demi menjaga ketahanan modal.
@@ -45,9 +45,9 @@
 
 ---
 
-### 🗺️ Peta Jalan Ekosistem GADUNG (Roadmap)
+### 🗺️ Peta Jalan Ekosistem GADUN (Roadmap)
 
-Peta jalan ini merupakan kerangka kerja aktif yang juga ditampilkan secara interaktif pada *website* resmi **Gadung**:
+Peta jalan ini merupakan kerangka kerja aktif yang juga ditampilkan secara interaktif pada *website* resmi **Gadun**:
 
 | Fase | Fokus Utama | Target Pengembangan | Status |
 | :--- | :--- | :--- | :---: |
