@@ -1,127 +1,268 @@
 <div align="center">
 
-  <!-- Logo Utama Gosaldo -->
-  <img src="./gosaldo.svg" alt="Gosaldo Logo" width="130" height="auto" />
+<img src="./kedhung.svg" alt="Kedhung Logo" width="130" height="auto" />
 
-  # Halo, Saya Gosaldo 👋
-  ### Algorithmic Trading Engineer & Arsitek **GOSALDO** (*Gudang Mesin Uang Masa Depan*)
+# Halo, Saya Kedhung 👋
 
-  <p align="center">
-    <i>Menjembatani pasar finansial (XAUUSD & Major Pairs), kecerdasan rekayasa, dan otomasi perangkat lunak berskala tinggi.</i>
-  </p>
+### Algorithmic Trading Engineer • Quant Researcher • Arsitek KEDHUNG
 
-  <p align="center">
-    <a href="mailto:ringinbambu@gmail.com"><img src="https://img.shields.io/badge/Kontak-Email_Saya-0078D4?style=for-the-badge&logo=microsoft-outlook&logoColor=white" alt="Email" /></a>
-    <a href="https://t.me/gosaldo"><img src="https://img.shields.io/badge/Telegram-Chat-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram" /></a>
-  </p>
+<p align="center">
+<i>Deep Thinking. Clear Execution.</i>
+</p>
 
-  ---
+<p align="center">
+<i>Kedalaman analisis, kejernihan berpikir, dan disiplin eksekusi dalam dunia trading modern.</i>
+</p>
 
-  <!-- Dynamic Typing SVG -->
-  <a href="https://git.io/typing-svg">
-    <img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=600&size=20&duration=3000&pause=1000&color=00B4D8&center=true&vCenter=true&width=700&lines=Membangun+GOSALDO%3A+Gudang+Mesin+Uang+Masa+Depan;Expert+Advisor+MetaTrader+5+(MQL5)+Berbasis+AI;Sistem+Manajemen+Risiko+Berlapis+%26+Replikasi+Unit;Otomasi+Bot+Telegram+%26+Web+Dashboard+Real-Time" alt="Typing SVG" />
-  </a>
+<p align="center">
+<a href="mailto:ringinbambu@gmail.com">
+<img src="https://img.shields.io/badge/Kontak-Email_Saya-0078D4?style=for-the-badge&logo=microsoft-outlook&logoColor=white" alt="Email" />
+</a>
+
+<a href="https://t.me/kedhung">
+<img src="https://img.shields.io/badge/Telegram-Chat-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram" />
+</a>
+</p>
+
+---
+
+<a href="https://git.io/typing-svg">
+<img src="https://readme-typing-svg.herokuapp.com?font=Fira+Code&weight=600&size=20&duration=3000&pause=1000&color=00B4D8&center=true&vCenter=true&width=800&lines=Membangun+KEDHUNG%3A+Etika+dan+Disiplin+Trader;Algorithmic+Trading+Berbasis+Data+dan+Probabilitas;Manajemen+Risiko+Lebih+Penting+Dari+Profit;MetaTrader+5+(MQL5)+%2B+AI+Engineering;Trading+Dengan+Akal%2C+Bukan+Emosi" alt="Typing SVG" />
+</a>
 
 </div>
 
 ---
 
-### 🏛️ Visi Utama: GOSALDO (*Gudang Mesin Uang Masa Depan*)
+# 🏛️ Filosofi KEDHUNG
 
-**Gosaldo** adalah ekosistem *algorithmic trading* generasi baru yang dirancang untuk menggantikan robot indikator statis dengan **eksekusi cerdas berbasis AI di MetaTrader 5 (MT5)**. Berfokus pada instrumen **XAUUSD (Emas)** dan *pair* utama, setiap "mesin uang" di dalam gudang ini bekerja di bawah protokol manajemen risiko yang ketat:
+**Kedhung** adalah kata dalam bahasa Jawa yang berarti **lubuk sungai yang dalam dan tenang**.
 
-* 🧠 **Filter Rezim Pasar Berbasis AI (ONNX & Python):** Deteksi kondisi pasar secara *real-time* (*Trending*, *Sideways*, atau *Volatilitas Tinggi*) yang ditanamkan langsung ke dalam MQL5 melalui model ONNX maupun integrasi API.
-* 🛡️ **Kerangka Manajemen Risiko Berlapis:** Dilengkapi batas peringatan *drawdown* harian, *hard equity stop* (batas rugi harian absolut), serta eksekusi *Dynamic TP/SL* otomatis demi menjaga ketahanan modal.
-* 🔄 **Sistem Skala & Replikasi Unit:** Standarisasi ukuran akun dan replikasi unit lintas broker untuk mendistribusikan risiko dan target profit secara terukur.
-* 📡 **Telemetri Real-Time & Portal Web:** Pemantauan performa transparan, peta jalan (*roadmap*) interaktif di *website*, serta notifikasi eksekusi instan via **Telegram Bot**.
+Filosofi ini menjadi fondasi seluruh sistem, riset, dan automasi yang saya bangun:
 
----
+- 🧠 Berpikir dalam sebelum mengambil posisi.
+- ⚖️ Menempatkan disiplin di atas emosi.
+- 🛡️ Menjaga risiko sebelum mengejar keuntungan.
+- 📊 Mengambil keputusan berdasarkan data, bukan keyakinan.
+- 🎯 Fokus pada proses, bukan hasil sesaat.
+- 🌊 Tetap tenang di tengah volatilitas pasar.
 
-### 💼 Layanan & Keahlian Utama
-- 📈 **Pengembangan Sistem MetaTrader 5 (MQL5) & AI**: Pembuatan *Expert Advisor* (EA) kustom, integrasi model ONNX, indikator presisi, dan utilitas proteksi risiko berlapis.
-- 🤖 **Otomasi Trading & Ekosistem Bot**: Pembuatan *bot alert* Telegram/Discord berkecepatan tinggi, *webhook bridge* (TradingView ke MT5), dan sistem tindak lanjut otomatis.
-- ⚡ **Backtesting Kuantitatif & Optimasi**: Pengujian ketahanan strategi dengan *99.9% real-tick data*, simulasi *spread/slippage* dinamis, dan penghalusan kurva ekuitas.
-- 🛠️ **Full-Stack FinTech & Micro-SaaS**: Pembuatan *web dashboard* performa, server lisensi EA, *deployment* Cloudflare Pages, serta integrasi API finansial.
+Bagi saya, trading bukan tentang menebak arah harga.
 
----
-
-### 🗺️ Peta Jalan Ekosistem GOSALDO (Roadmap)
-
-Peta jalan ini merupakan kerangka kerja aktif yang juga ditampilkan secara interaktif pada *website* resmi **Gosaldo**:
-
-| Fase | Fokus Utama | Target Pengembangan | Status |
-| :--- | :--- | :--- | :---: |
-| **Fase 1** | **Fondasi & Risiko Inti** | Identitas visual (`gosaldo.svg`), modul MQL5 *Multi-Layer Risk*, & rilis Website Peta Jalan v1.0. | 🟢 *Berjalan* |
-| **Fase 2** | **Integrasi AI & Validasi** | Pelatihan data *tick* XAUUSD, integrasi filter ONNX ke MT5, & verifikasi akun *live* (Myfxbook/MQL5). | 🟡 *Segera* |
-| **Fase 3** | **Infrastruktur Gudang** | Sistem lisensi akun MT5 berbasis *cloud*, sinkronisasi TP/SL otomatis, & uji beta replikasi unit. | 🔵 *Terencana* |
-| **Fase 4** | **Ekspansi Multi-Mesin** | Diversifikasi mesin (*Gold Scalper*, *Swing AI*, *Low-DD*), *auto-retraining* AI, & portal publik. | 🟣 *Masa Depan* |
+Trading adalah proses pengambilan keputusan yang terukur, disiplin, dan dapat dipertanggungjawabkan.
 
 ---
 
-### 🛠️ Tumpukan Teknologi & Perangkat (Tech Stack)
+# 🎯 Misi KEDHUNG
+
+Mengembangkan ekosistem algorithmic trading yang menggabungkan:
+
+- Artificial Intelligence
+- Quantitative Research
+- Risk Management
+- MetaTrader 5 Automation
+- Monitoring & Telemetry
+- FinTech Infrastructure
+
+untuk menghasilkan sistem trading yang lebih objektif, transparan, dan berkelanjutan.
+
+---
+
+# 💼 Keahlian Utama
+
+### 📈 Algorithmic Trading & MQL5 Engineering
+
+- Expert Advisor (EA) MetaTrader 5
+- Custom Indicator Development
+- Risk Engine Development
+- Position Sizing Automation
+- Multi-Account Infrastructure
+
+### 🧠 Artificial Intelligence for Trading
+
+- ONNX Integration for MT5
+- Regime Classification
+- Volatility Classification
+- Signal Filtering
+- Machine Learning Pipeline
+
+### 🛡️ Risk Management Systems
+
+- Dynamic Risk Allocation
+- Equity Protection
+- Daily Drawdown Guard
+- Hard Equity Stop
+- Automated Exposure Monitoring
+
+### ⚡ Trading Automation
+
+- Telegram Trading Bots
+- Webhook Bridge
+- TradingView Integration
+- Execution Monitoring
+- Real-Time Notifications
+
+### 🌐 FinTech Development
+
+- Dashboard & Analytics
+- Cloudflare Deployment
+- API Integration
+- PostgreSQL Infrastructure
+- SaaS Architecture
+
+---
+
+# 🗺️ Roadmap KEDHUNG
+
+| Fase | Fokus | Target | Status |
+|-------|--------|---------|---------|
+| 1 | Fondasi | Branding KEDHUNG, Website, Risk Framework | 🟢 Aktif |
+| 2 | AI Integration | Regime Filter, ONNX, Market Classification | 🟡 Berjalan |
+| 3 | Infrastructure | License System, Trade Replication, Monitoring | 🔵 Terencana |
+| 4 | Multi Strategy | Gold, Swing, Low-DD, Portfolio Engine | 🟣 Masa Depan |
+| 5 | Research Platform | Quant Research & Public Analytics Portal | ⚪ Vision |
+
+---
+
+# 🛠️ Tech Stack
 
 <table>
-  <tr>
-    <td align="center" width="96">
-      <img src="https://skillicons.dev/icons?i=cpp" width="40" height="40" alt="MQL5/C++" />
-      <br>MQL5 / C++
-    </td>
-    <td align="center" width="96">
-      <img src="https://skillicons.dev/icons?i=python" width="40" height="40" alt="Python" />
-      <br>Python / AI
-    </td>
-    <td align="center" width="96">
-      <img src="https://skillicons.dev/icons?i=js" width="40" height="40" alt="JavaScript" />
-      <br>JavaScript
-    </td>
-    <td align="center" width="96">
-      <img src="https://skillicons.dev/icons?i=nodejs" width="40" height="40" alt="NodeJS" />
-      <br>Node.js
-    </td>
-    <td align="center" width="96">
-      <img src="https://skillicons.dev/icons?i=cloudflare" width="40" height="40" alt="Cloudflare" />
-      <br>Cloudflare
-    </td>
-    <td align="center" width="96">
-      <img src="https://skillicons.dev/icons?i=postgres" width="40" height="40" alt="PostgreSQL" />
-      <br>PostgreSQL
-    </td>
-    <td align="center" width="96">
-      <img src="https://skillicons.dev/icons?i=git" width="40" height="40" alt="Git" />
-      <br>Git
-    </td>
-    <td align="center" width="96">
-      <img src="https://skillicons.dev/icons?i=docker" width="40" height="40" alt="Docker" />
-      <br>Docker
-    </td>
-  </tr>
+<tr>
+<td align="center" width="96">
+<img src="https://skillicons.dev/icons?i=cpp" width="40"/><br/>
+MQL5 / C++
+</td>
+
+<td align="center" width="96">
+<img src="https://skillicons.dev/icons?i=python" width="40"/><br/>
+Python
+</td>
+
+<td align="center" width="96">
+<img src="https://skillicons.dev/icons?i=js" width="40"/><br/>
+JavaScript
+</td>
+
+<td align="center" width="96">
+<img src="https://skillicons.dev/icons?i=nodejs" width="40"/><br/>
+Node.js
+</td>
+
+<td align="center" width="96">
+<img src="https://skillicons.dev/icons?i=postgres" width="40"/><br/>
+PostgreSQL
+</td>
+
+<td align="center" width="96">
+<img src="https://skillicons.dev/icons?i=cloudflare" width="40"/><br/>
+Cloudflare
+</td>
+
+<td align="center" width="96">
+<img src="https://skillicons.dev/icons?i=docker" width="40"/><br/>
+Docker
+</td>
+
+<td align="center" width="96">
+<img src="https://skillicons.dev/icons?i=git" width="40"/><br/>
+Git
+</td>
+</tr>
 </table>
 
 ---
 
-### 🚀 Proyek & Mesin Unggulan
-- 🏛️ **Gosaldo Core Engine (XAUUSD AI)**: EA MT5 utama dengan filter rezim pasar AI, pembatas *drawdown* harian otomatis, dan manajemen replikasi unit. *(R&D Aktif)*
-- 🛡️ **MT5 Multi-Layer Risk Utility**: Kalkulator *lot* cerdas, eksekusi TP/SL otomatis, dan pengaman ekuitas kumulatif. *(Tahap Pengujian)*
-- 📡 **Market Squeeze & Volatility Detector**: Mesin pendeteksi ledakan volatilitas *multi-timeframe* yang terhubung langsung ke notifikasi Telegram. *(Dalam Pengembangan)*
-- ⚡ **Automated Signal & Webhook Bridge**: Jembatan eksekusi instan berlatensi rendah dari sinyal eksternal/TradingView menuju terminal MT5.
+# 🚀 Proyek Unggulan
+
+### 🏛️ KEDHUNG Core Engine
+
+Sistem EA MT5 berbasis AI untuk XAUUSD yang mengutamakan:
+
+- Market Regime Classification
+- Dynamic Risk Management
+- Drawdown Protection
+- Real-Time Monitoring
+
+**Status:** R&D Aktif
 
 ---
 
-### 📊 Statistik & Aktivitas GitHub
+### 🛡️ Multi-Layer Risk Utility
+
+Perangkat proteksi modal berbasis:
+
+- Dynamic Lot Calculation
+- Equity Stop
+- Daily Loss Limit
+- Exposure Control
+
+**Status:** Pengembangan
+
+---
+
+### 📡 Volatility & Regime Detector
+
+Mesin klasifikasi kondisi pasar yang mendeteksi:
+
+- Trending Market
+- Sideways Market
+- Expansion Phase
+- Compression Phase
+
+**Status:** Riset
+
+---
+
+### ⚡ Signal & Execution Bridge
+
+Sistem integrasi otomatis:
+
+- TradingView
+- Telegram
+- MT5
+- External API
+
+**Status:** Pengembangan
+
+---
+
+# 📊 GitHub Statistics
 
 <p align="center">
-  <img height="185" src="https://github-readme-stats-eight-xi.vercel.app/api?username=gosaldo&show_icons=true&theme=tokyonight&hide_border=true&count_private=true" alt="GitHub Stats" />
-  <img height="185" src="https://github-readme-stats-eight-xi.vercel.app/api/top-langs/?username=gosaldo&layout=compact&theme=tokyonight&hide_border=true" alt="Top Languages" />
+
+<img height="185" src="https://github-readme-stats.vercel.app/api?username=kedhung&show_icons=true&theme=tokyonight&hide_border=true&count_private=true"/>
+
+<img height="185" src="https://github-readme-stats.vercel.app/api/top-langs/?username=kedhung&layout=compact&theme=tokyonight&hide_border=true"/>
+
 </p>
 
 <p align="center">
-  <img src="https://streak-stats.demolab.com/?user=gosaldo&theme=tokyonight&hide_border=true" alt="GitHub Streak" />
+
+<img src="https://streak-stats.demolab.com?user=kedhung&theme=tokyonight&hide_border=true"/>
+
 </p>
 
 ---
 
-### 🤝 Mari Berkolaborasi
-Saya terbuka untuk diskusi proyek, pembuatan EA MT5 + AI kustom, infrastruktur tim trading, maupun kemitraan *FinTech SaaS*.
-- **Email**: [ringinbambu@gmail.com](mailto:ringinbambu@gmail.com)
-- **Telegram**: [@gosaldo](https://t.me/gosaldo)
-- **MQL5 / Freelance**: Tersedia berdasarkan permintaan
+# 🤝 Mari Berkolaborasi
+
+Saya terbuka untuk kolaborasi seputar:
+
+- Algorithmic Trading
+- MetaTrader 5 Development
+- Quantitative Research
+- AI for Trading
+- Trading Infrastructure
+- FinTech SaaS
+
+📧 Email: **ringinbambu@gmail.com**
+
+📨 Telegram: **@kedhung**
+
+---
+
+### 🌊 KEDHUNG
+
+> "Semakin dalam pemahaman, semakin tenang keputusan."
+
+> "Profit adalah hasil samping dari disiplin yang konsisten."
