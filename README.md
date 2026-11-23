@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="./kedhung.svg" alt="Kedhung Logo" width="130" height="auto" />
+<img src="./gecil.svg" alt="Kedhung Logo" width="130" height="auto" />
 
 # Halo, Saya Kedhung 👋
 
