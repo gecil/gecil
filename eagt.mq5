@@ -5,9 +5,9 @@
 //|             Powered by ICT_SMC_CRT + ICT/SMC/CRT Structure       |
 //+------------------------------------------------------------------+
 #property copyright   "Copyright 2026, GT Recovery Engine"
-#property version     "1.32"
+#property version     "1.33"
 #property description "GT Recovery Engine (All-in-One): ICT+SMC+CRT Entry + Direct Flip Martingale (Buy SL->Sell, Sell SL->Buy Sampai TP)"
-#property description "v1.32: Daily DD Resume-On-Signal (lanjut entry saat sinyal baru, tanpa tunggu hari berikutnya) + Anti-Deadlock Siklus"
+#property description "v1.33: SL/TP Flip mewarisi jarak SL entry awal (presisi RR) + Re-Anchor via Deal ID + Alasan Entry di komentar order & kode"
 #property strict
 
 #include <Trade\Trade.mqh>
@@ -530,6 +530,12 @@ struct SRecoveryState
    int                   classicCount;
    int                   flipCount;
 
+   //--- [v1.33] Jarak SL/TP (dalam harga) dari entry awal siklus -> dipakai ulang oleh semua Flip
+   double                cycleSLDistPx;
+   double                cycleTPDistPx;
+   //--- [v1.33] Alasan entry terakhir (untuk log / panel)
+   string                lastEntryReason;
+
    void Reset()
    {
       cycleActive         = false;
@@ -546,6 +552,9 @@ struct SRecoveryState
       lastLostPrice       = 0.0;
       classicCount        = 0;
       flipCount           = 0;
+      cycleSLDistPx       = 0.0;
+      cycleTPDistPx       = 0.0;
+      lastEntryReason     = "-";
    }
 };
 
@@ -1973,26 +1982,33 @@ private:
       ObjectSetString(0, name, OBJPROP_TOOLTIP, tooltip);
    }
 
+   //--- ALASAN BIAS: sistem voting struktur. Bias hanya BULLISH/BEARISH jika selisih vote >= 2.
+   //    Bias adalah GERBANG pertama: tanpa bias searah, sinyal BUY/SELL tidak pernah keluar.
    ENUM_GT_BIAS DetermineBias(const SMarketContext &ctx) const
    {
       int bullVotes = 0;
       int bearVotes = 0;
 
+      // Tren struktur eksternal (swing besar): fondasi arah utama
       if(ctx.extTrend ==  1) bullVotes += 3;
       if(ctx.extTrend == -1) bearVotes += 3;
 
+      // CHoCH = pembalikan struktur eksternal (bobot terbesar), BOS = kelanjutan tren
       if(ctx.chochBull) bullVotes += 4;
       if(ctx.chochBear) bearVotes += 4;
       if(ctx.bosBull)   bullVotes += 2;
       if(ctx.bosBear)   bearVotes += 2;
 
+      // Struktur internal (swing kecil): konfirmasi lebih awal
       if(ctx.intTrend ==  1) bullVotes += 1;
       if(ctx.intTrend == -1) bearVotes += 1;
       if(ctx.ichochBull)     bullVotes += 2;
       if(ctx.ichochBear)     bearVotes += 2;
 
+      // CRT valid hanya dihitung jika disertai sapuan likuiditas (manipulasi -> distribusi)
       if(ctx.crtBull && (ctx.xSSL || ctx.idmSweptBull)) bullVotes += 3;
       if(ctx.crtBear && (ctx.xBSL || ctx.idmSweptBear)) bearVotes += 3;
+      // IFVG = FVG yang gagal bertahan lalu berbalik fungsi (support/resistance baru)
       if(ctx.bullIFVG) bullVotes += 1;
       if(ctx.bearIFVG) bearVotes += 1;
 
@@ -2001,6 +2017,8 @@ private:
       return GT_BIAS_NEUTRAL;
    }
 
+   //--- SL/TP struktural untuk ENTRY AWAL (L0): SL di balik OB / swing internal + buffer.
+   //    Jarak SL ini disimpan di state siklus dan DIWARISI oleh semua Flip (v1.33).
    void ComputeStructuralSLTP(const bool isBuy,
                               const double refEntry,
                               const MqlRates &sigBar,
@@ -2156,63 +2174,82 @@ public:
       double lowerWick = MathMin(sigBar.open, sigBar.close) - sigBar.low;
       double upperWick = sigBar.high - MathMax(sigBar.open, sigBar.close);
 
+      // KONFIRMASI CANDLE: candle sinyal harus bullish (close>open) ATAU punya sumbu bawah panjang
+      // (>=45% range) dengan close di setengah atas -> tanda penolakan harga ke bawah (rejection).
       bool bullCandleConfirm = (sigBar.close > sigBar.open) ||
                                (lowerWick >= range * 0.45 && sigBar.close >= sigBar.low + range * 0.50);
       bool bearCandleConfirm = (sigBar.close < sigBar.open) ||
                                (upperWick >= range * 0.45 && sigBar.close <= sigBar.high - range * 0.50);
 
+      //================================================================
+      // ALASAN ENTRY BUY: skor = KATALIS (pemicu) + ZONA (lokasi) + KILLZONE (waktu)
+      // Setiap token pada bullReason muncul di komentar order & log: mis. "CRT_Bull+xSSL+CHoCH+OTE"
+      //================================================================
       int    bullScore    = 0;
       bool   bullCatalyst = false;
       bool   bullZoneOK   = false;
       string bullReason   = "";
 
-      if(ctx.crtBull)                            { bullScore += 3; bullCatalyst = true; AppendToken(bullReason, "CRT_Bull"); }
-      if(ctx.xSSL)                               { bullScore += 3; bullCatalyst = true; AppendToken(bullReason, "xSSL"); }
-      if(ctx.idmSweptBull)                       { bullScore += 3; bullCatalyst = true; AppendToken(bullReason, "IDM"); }
-      if(ctx.chochBull)                          { bullScore += 3; bullCatalyst = true; AppendToken(bullReason, "CHoCH"); }
-      if(ctx.bosBull)                            { bullScore += 2; bullCatalyst = true; AppendToken(bullReason, "BOS"); }
-      if(ctx.ichochBull)                         { bullScore += 2; bullCatalyst = true; AppendToken(bullReason, "iCHoCH"); }
-      if(ctx.ibosBull)                           { bullScore += 1; bullCatalyst = true; AppendToken(bullReason, "iBOS"); }
-      if(ctx.eqlSweptBull)                       { bullScore += 2; bullCatalyst = true; AppendToken(bullReason, "EQL"); }
-      if(ctx.pdlSweptBull || ctx.pwlSweptBull)   { bullScore += 2; bullCatalyst = true; AppendToken(bullReason, "PDL/PWL"); }
-      if(ctx.sweepBull && !ctx.xSSL)             { bullScore += 1; bullCatalyst = true; AppendToken(bullReason, "Sweep"); }
+      // ---- KATALIS BUY (sapuan likuiditas sell-side / pergeseran struktur ke atas) ----
+      if(ctx.crtBull)                            { bullScore += 3; bullCatalyst = true; AppendToken(bullReason, "CRT_Bull"); } // CRT: low candle ref disapu lalu close kembali dalam range
+      if(ctx.xSSL)                               { bullScore += 3; bullCatalyst = true; AppendToken(bullReason, "xSSL"); }     // External sell-side liquidity tersapu (stop hunt di bawah swing low eksternal)
+      if(ctx.idmSweptBull)                       { bullScore += 3; bullCatalyst = true; AppendToken(bullReason, "IDM"); }      // Inducement internal tersapu (jebakan sebelum naik)
+      if(ctx.chochBull)                          { bullScore += 3; bullCatalyst = true; AppendToken(bullReason, "CHoCH"); }    // Change of Character bullish: tren turun patah
+      if(ctx.bosBull)                            { bullScore += 2; bullCatalyst = true; AppendToken(bullReason, "BOS"); }      // Break of Structure bullish: tren naik berlanjut
+      if(ctx.ichochBull)                         { bullScore += 2; bullCatalyst = true; AppendToken(bullReason, "iCHoCH"); }   // CHoCH internal bullish (konfirmasi awal)
+      if(ctx.ibosBull)                           { bullScore += 1; bullCatalyst = true; AppendToken(bullReason, "iBOS"); }     // BOS internal bullish
+      if(ctx.eqlSweptBull)                       { bullScore += 2; bullCatalyst = true; AppendToken(bullReason, "EQL"); }      // Equal Lows tersapu
+      if(ctx.pdlSweptBull || ctx.pwlSweptBull)   { bullScore += 2; bullCatalyst = true; AppendToken(bullReason, "PDL/PWL"); }  // Low hari/minggu sebelumnya tersapu
+      if(ctx.sweepBull && !ctx.xSSL)             { bullScore += 1; bullCatalyst = true; AppendToken(bullReason, "Sweep"); }    // Sapuan umum (bukan xSSL, agar tidak dihitung ganda)
 
-      if(ctx.atBullOB)                           { bullScore += 3; bullZoneOK = true;   AppendToken(bullReason, "BullOB"); }
-      else if(ctx.bullOBValid)                   { bullScore += 1; bullZoneOK = true;   }
-      if(ctx.bullIFVG)                           { bullScore += 2; bullZoneOK = true;   AppendToken(bullReason, "IFVG"); }
-      if(ctx.bullFVGValid)                       { bullScore += 2; bullZoneOK = true;   AppendToken(bullReason, "FVG"); }
-      if(ctx.bullBreakerActive)                  { bullScore += 2; bullZoneOK = true;   AppendToken(bullReason, "Breaker"); }
-      if(ctx.inBullOTE)                          { bullScore += 2; bullZoneOK = true;   AppendToken(bullReason, "OTE"); }
-      else if(ctx.inDiscount)                    { bullScore += 1; bullZoneOK = true;   AppendToken(bullReason, "Disc"); }
-      if(ctx.bullMB || ctx.bullVI || ctx.bullVoid){ bullScore += 1; bullZoneOK = true;  }
-      if(ctx.inKillZone)                         { bullScore += 1; AppendToken(bullReason, "KZ"); }
+      // ---- ZONA BUY (lokasi entry berkualitas: area demand / diskon) ----
+      if(ctx.atBullOB)                           { bullScore += 3; bullZoneOK = true;   AppendToken(bullReason, "BullOB"); }   // Harga berada DI DALAM Bullish Order Block
+      else if(ctx.bullOBValid)                   { bullScore += 1; bullZoneOK = true;   }                                       // OB ada tapi harga belum di dalamnya (tanpa token)
+      if(ctx.bullIFVG)                           { bullScore += 2; bullZoneOK = true;   AppendToken(bullReason, "IFVG"); }     // Inversion FVG bullish
+      if(ctx.bullFVGValid)                       { bullScore += 2; bullZoneOK = true;   AppendToken(bullReason, "FVG"); }      // Bullish FVG aktif (imbalance belum terisi)
+      if(ctx.bullBreakerActive)                  { bullScore += 2; bullZoneOK = true;   AppendToken(bullReason, "Breaker"); }  // Breaker block bullish
+      if(ctx.inBullOTE)                          { bullScore += 2; bullZoneOK = true;   AppendToken(bullReason, "OTE"); }      // Optimal Trade Entry (Fib 0.618-0.786)
+      else if(ctx.inDiscount)                    { bullScore += 1; bullZoneOK = true;   AppendToken(bullReason, "Disc"); }     // Setengah bawah dealing range (diskon)
+      if(ctx.bullMB || ctx.bullVI || ctx.bullVoid){ bullScore += 1; bullZoneOK = true;  }                                      // Mitigation Block / Volume Imbalance / Liquidity Void (tanpa token)
+      if(ctx.inKillZone)                         { bullScore += 1; AppendToken(bullReason, "KZ"); }                             // Bonus waktu: sesi likuid (London / NY)
 
+      //================================================================
+      // ALASAN ENTRY SELL: cermin dari BUY (sapuan buy-side / struktur turun / zona premium)
+      //================================================================
       int    bearScore    = 0;
       bool   bearCatalyst = false;
       bool   bearZoneOK   = false;
       string bearReason   = "";
 
-      if(ctx.crtBear)                            { bearScore += 3; bearCatalyst = true; AppendToken(bearReason, "CRT_Bear"); }
-      if(ctx.xBSL)                               { bearScore += 3; bearCatalyst = true; AppendToken(bearReason, "xBSL"); }
-      if(ctx.idmSweptBear)                       { bearScore += 3; bearCatalyst = true; AppendToken(bearReason, "IDM"); }
-      if(ctx.chochBear)                          { bearScore += 3; bearCatalyst = true; AppendToken(bearReason, "CHoCH"); }
-      if(ctx.bosBear)                            { bearScore += 2; bearCatalyst = true; AppendToken(bearReason, "BOS"); }
-      if(ctx.ichochBear)                         { bearScore += 2; bearCatalyst = true; AppendToken(bearReason, "iCHoCH"); }
-      if(ctx.ibosBear)                           { bearScore += 1; bearCatalyst = true; AppendToken(bearReason, "iBOS"); }
-      if(ctx.eqhSweptBear)                       { bearScore += 2; bearCatalyst = true; AppendToken(bearReason, "EQH"); }
-      if(ctx.pdhSweptBear || ctx.pwhSweptBear)   { bearScore += 2; bearCatalyst = true; AppendToken(bearReason, "PDH/PWH"); }
-      if(ctx.sweepBear && !ctx.xBSL)             { bearScore += 1; bearCatalyst = true; AppendToken(bearReason, "Sweep"); }
+      // ---- KATALIS SELL ----
+      if(ctx.crtBear)                            { bearScore += 3; bearCatalyst = true; AppendToken(bearReason, "CRT_Bear"); } // CRT: high candle ref disapu lalu close kembali dalam range
+      if(ctx.xBSL)                               { bearScore += 3; bearCatalyst = true; AppendToken(bearReason, "xBSL"); }     // External buy-side liquidity tersapu
+      if(ctx.idmSweptBear)                       { bearScore += 3; bearCatalyst = true; AppendToken(bearReason, "IDM"); }      // Inducement internal tersapu (jebakan sebelum turun)
+      if(ctx.chochBear)                          { bearScore += 3; bearCatalyst = true; AppendToken(bearReason, "CHoCH"); }    // CHoCH bearish: tren naik patah
+      if(ctx.bosBear)                            { bearScore += 2; bearCatalyst = true; AppendToken(bearReason, "BOS"); }      // BOS bearish: tren turun berlanjut
+      if(ctx.ichochBear)                         { bearScore += 2; bearCatalyst = true; AppendToken(bearReason, "iCHoCH"); }   // CHoCH internal bearish
+      if(ctx.ibosBear)                           { bearScore += 1; bearCatalyst = true; AppendToken(bearReason, "iBOS"); }     // BOS internal bearish
+      if(ctx.eqhSweptBear)                       { bearScore += 2; bearCatalyst = true; AppendToken(bearReason, "EQH"); }      // Equal Highs tersapu
+      if(ctx.pdhSweptBear || ctx.pwhSweptBear)   { bearScore += 2; bearCatalyst = true; AppendToken(bearReason, "PDH/PWH"); }  // High hari/minggu sebelumnya tersapu
+      if(ctx.sweepBear && !ctx.xBSL)             { bearScore += 1; bearCatalyst = true; AppendToken(bearReason, "Sweep"); }    // Sapuan umum
 
-      if(ctx.atBearOB)                           { bearScore += 3; bearZoneOK = true;   AppendToken(bearReason, "BearOB"); }
+      // ---- ZONA SELL (area supply / premium) ----
+      if(ctx.atBearOB)                           { bearScore += 3; bearZoneOK = true;   AppendToken(bearReason, "BearOB"); }   // Harga di dalam Bearish Order Block
       else if(ctx.bearOBValid)                   { bearScore += 1; bearZoneOK = true;   }
-      if(ctx.bearIFVG)                           { bearScore += 2; bearZoneOK = true;   AppendToken(bearReason, "IFVG"); }
-      if(ctx.bearFVGValid)                       { bearScore += 2; bearZoneOK = true;   AppendToken(bearReason, "FVG"); }
-      if(ctx.bearBreakerActive)                  { bearScore += 2; bearZoneOK = true;   AppendToken(bearReason, "Breaker"); }
-      if(ctx.inBearOTE)                          { bearScore += 2; bearZoneOK = true;   AppendToken(bearReason, "OTE"); }
-      else if(ctx.inPremium)                     { bearScore += 1; bearZoneOK = true;   AppendToken(bearReason, "Prem"); }
+      if(ctx.bearIFVG)                           { bearScore += 2; bearZoneOK = true;   AppendToken(bearReason, "IFVG"); }     // Inversion FVG bearish
+      if(ctx.bearFVGValid)                       { bearScore += 2; bearZoneOK = true;   AppendToken(bearReason, "FVG"); }      // Bearish FVG aktif
+      if(ctx.bearBreakerActive)                  { bearScore += 2; bearZoneOK = true;   AppendToken(bearReason, "Breaker"); }  // Breaker block bearish
+      if(ctx.inBearOTE)                          { bearScore += 2; bearZoneOK = true;   AppendToken(bearReason, "OTE"); }      // OTE bearish (Fib 0.618-0.786 dari bawah)
+      else if(ctx.inPremium)                     { bearScore += 1; bearZoneOK = true;   AppendToken(bearReason, "Prem"); }     // Setengah atas dealing range (premium)
       if(ctx.bearMB || ctx.bearVI || ctx.bearVoid){ bearScore += 1; bearZoneOK = true;  }
       if(ctx.inKillZone)                         { bearScore += 1; AppendToken(bearReason, "KZ"); }
 
+      //================================================================
+      // KEPUTUSAN ENTRY: bias searah + konfirmasi candle + skor minimum
+      //   Konservatif : skor>=8 DAN ada katalis DAN ada zona
+      //   Seimbang    : skor>=5 DAN ada katalis
+      //   Agresif     : skor>=3 saja
+      //================================================================
       bool buyTrigger  = false;
       bool sellTrigger = false;
 
@@ -2245,10 +2282,12 @@ public:
       if(ask <= 0.0) ask = sigBar.close;
       if(bid <= 0.0) bid = sigBar.close;
 
+      // Sinyal konflik (BUY & SELL sekaligus) dibuang: tidak ada entry
       if(buyTrigger && !sellTrigger)
       {
          outData.buySignal    = true;
          outData.buySignalRaw = sigBar.low;
+         // Format "BUY(skor): token+token" -> bagian setelah ": " dipakai sebagai komentar order
          outData.signalReason = StringFormat("BUY(%d): %s", bullScore, bullReason);
          ComputeStructuralSLTP(true, ask, sigBar, ctx, pipConv, outData.buySL, outData.buyTP);
 
@@ -2503,6 +2542,7 @@ public:
 
       outData.biasChangedToBull = (outData.bias == GT_BIAS_BULLISH && outData.prevBias != GT_BIAS_BULLISH);
       outData.biasChangedToBear = (outData.bias == GT_BIAS_BEARISH && outData.prevBias != GT_BIAS_BEARISH);
+      // Mode iCustom: indikator eksternal tidak membocorkan alasan detail, hanya arah sinyal
       outData.signalReason      = outData.buySignal ? "iCustom BUY"
                                 : (outData.sellSignal ? "iCustom SELL" : "iCustom Standby");
 
@@ -2510,12 +2550,14 @@ public:
       return true;
    }
 
+   //--- ENTRY BUY sah: sinyal BUY aktif + bias BULLISH + tidak ada sinyal SELL bersamaan
    bool IsValidBuyEntry(const SIndicatorData &data) const
    {
       if(!data.valid) return false;
       return (data.buySignal && data.bias == GT_BIAS_BULLISH && !data.sellSignal);
    }
 
+   //--- ENTRY SELL sah: sinyal SELL aktif + bias BEARISH + tidak ada sinyal BUY bersamaan
    bool IsValidSellEntry(const SIndicatorData &data) const
    {
       if(!data.valid) return false;
@@ -2558,6 +2600,8 @@ public:
       return m_lastDecision;
    }
 
+   //--- Menilai posisi berarah currentDir: apakah pasar kini cenderung BALIK ARAH (Flip)
+   //    atau masih sejalan (Martingale Klasik). Hasil ini adalah ALASAN entry recovery.
    SProbabilityDecision Evaluate(const ENUM_GT_DIR currentDir,
                                  const SMarketContext &ctx,
                                  const SIndicatorData &ind)
@@ -2575,22 +2619,23 @@ public:
 
       bool isBuyPos = (currentDir == GT_DIR_BUY);
 
-      bool revIDM        = isBuyPos ? ctx.idmSweptBear      : ctx.idmSweptBull;
-      bool revExtLiq     = isBuyPos ? ctx.xBSL              : ctx.xSSL;
+      // ---- Faktor REVERSAL: sinyal yang MELAWAN arah posisi saat ini ----
+      bool revIDM        = isBuyPos ? ctx.idmSweptBear      : ctx.idmSweptBull;   // Inducement lawan tersapu
+      bool revExtLiq     = isBuyPos ? ctx.xBSL              : ctx.xSSL;           // Likuiditas eksternal lawan tersapu
       string extLiqLabel = isBuyPos ? "xBSL"                : "xSSL";
       int  wExtLiq       = isBuyPos ? m_weights.wXBSL       : m_weights.wXSSL;
 
-      bool revCHoCH      = isBuyPos ? ctx.chochBear         : ctx.chochBull;
-      bool revCRT        = isBuyPos ? ctx.crtBear           : ctx.crtBull;
-      bool revIFVG       = isBuyPos ? ctx.bearIFVG          : ctx.bullIFVG;
-      bool revFVG        = isBuyPos ? ctx.bearFVGValid      : ctx.bullFVGValid;
-      bool revOB         = isBuyPos ? (ctx.bearOBValid && ctx.atBearOB) : (ctx.bullOBValid && ctx.atBullOB);
+      bool revCHoCH      = isBuyPos ? ctx.chochBear         : ctx.chochBull;      // CHoCH lawan arah (struktur patah)
+      bool revCRT        = isBuyPos ? ctx.crtBear           : ctx.crtBull;        // CRT reversal
+      bool revIFVG       = isBuyPos ? ctx.bearIFVG          : ctx.bullIFVG;       // IFVG lawan arah
+      bool revFVG        = isBuyPos ? ctx.bearFVGValid      : ctx.bullFVGValid;   // FVG lawan arah aktif
+      bool revOB         = isBuyPos ? (ctx.bearOBValid && ctx.atBearOB) : (ctx.bullOBValid && ctx.atBullOB); // Harga di OB lawan
       bool revBreaker    = isBuyPos ? ctx.bearBreakerActive : ctx.bullBreakerActive;
-      bool revBOS        = isBuyPos ? ctx.bosBear           : ctx.bosBull;
+      bool revBOS        = isBuyPos ? ctx.bosBear           : ctx.bosBull;        // BOS lawan arah
       bool revICHoCH     = isBuyPos ? ctx.ichochBear        : ctx.ichochBull;
       bool revIBOS       = isBuyPos ? ctx.ibosBear          : ctx.ibosBull;
       bool revOTE        = isBuyPos ? ctx.inBearOTE         : ctx.inBullOTE;
-      bool revZoneFav    = isBuyPos ? ctx.inPremium         : ctx.inDiscount;
+      bool revZoneFav    = isBuyPos ? ctx.inPremium         : ctx.inDiscount;     // Posisi BUY di premium / SELL di discount = zona buruk
       string revZoneLbl  = isBuyPos ? "Premium"             : "Discount";
       int  wRevZone      = isBuyPos ? m_weights.wPremium    : m_weights.wDiscount;
 
@@ -2601,6 +2646,7 @@ public:
       bool revHTFLiq     = isBuyPos ? (ctx.pdhSweptBear || ctx.pwhSweptBear)
                                     : (ctx.pdlSweptBull || ctx.pwlSweptBull);
 
+      // Bias / sinyal indikator berbalik melawan posisi
       bool revIndBias    = false;
       if(ind.valid)
       {
@@ -2608,6 +2654,7 @@ public:
          if(!isBuyPos && (ind.bias == GT_BIAS_BULLISH || ind.buySignal))  revIndBias = true;
       }
 
+      // ---- Faktor KONTINUASI: bukti bahwa arah posisi lama masih sehat ----
       bool noOppCHoCH    = !revCHoCH;
       bool noOppBOS      = !revBOS;
       bool contZoneFav   = isBuyPos ? ctx.inDiscount        : ctx.inPremium;
@@ -2621,8 +2668,10 @@ public:
          if(!isBuyPos && ind.bias == GT_BIAS_BEARISH) contIndAligned = true;
       }
 
+      // Struktur "utuh" = belum ada CHoCH/BOS lawan
       dec.structureIntact = (noOppCHoCH && noOppBOS);
 
+      // Hitung jumlah sinyal per tier (dipakai mode hierarki & tampilan panel)
       int t1 = 0, t2 = 0, t3 = 0;
 
       if(revIDM)    t1++;
@@ -2630,7 +2679,7 @@ public:
       if(revCHoCH)  t1++;
       if(revCRT)    t1++;
 
-      bool tier2ComboLiqChoch = (revExtLiq && revCHoCH);
+      bool tier2ComboLiqChoch = (revExtLiq && revCHoCH);   // Kombo kuat: sapuan likuiditas + CHoCH
       if(tier2ComboLiqChoch) t2++;
       if(revIFVG)            t2++;
 
@@ -2647,6 +2696,7 @@ public:
       else if(t3 > 0) dec.highestTier = GT_TIER_3;
       else            dec.highestTier = GT_TIER_NONE;
 
+      // ---- Akumulasi SKOR REVERSAL (bobot dari input) ----
       int revScore = 0;
       string revList = "";
 
@@ -2711,6 +2761,7 @@ public:
          AppendFactor(revList, StringFormat("%s(+%d)", revZoneLbl, wRevZone));
       }
 
+      // Sweep umum tidak dihitung ganda jika xSSL/xBSL atau IDM sudah masuk skor
       if(revSweep && !revExtLiq && !revIDM && m_weights.wSweep > 0)
       {
          revScore += m_weights.wSweep;
@@ -2736,6 +2787,7 @@ public:
          revScore += m_weights.wHTFLiq;
          AppendFactor(revList, StringFormat("PD/PW_Liq(+%d)", m_weights.wHTFLiq));
       }
+      // Bonus KillZone hanya jika sudah ada minimal 1 faktor reversal (tidak berdiri sendiri)
       if(ctx.inKillZone && revScore > 0 && m_weights.wKillZone > 0)
       {
          revScore += m_weights.wKillZone;
@@ -2764,6 +2816,11 @@ public:
       dec.continuationScore         = contScore;
       dec.activeContinuationFactors = (contList == "") ? "Struktur lemah" : contList;
 
+      //================================================================
+      // KEPUTUSAN FLIP vs KLASIK
+      //   Mode Skor    : FLIP jika skor reversal > threshold
+      //   Mode Hierarki: FLIP jika salah satu kombinasi tier terpenuhi
+      //================================================================
       bool flipActivated = false;
 
       if(m_weights.enabled)
@@ -2773,15 +2830,15 @@ public:
       else
       {
          if(tier2ComboLiqChoch)
-            flipActivated = true;
+            flipActivated = true;                                                       // Sapuan likuiditas + CHoCH
          else if(revIDM && (revExtLiq || revCHoCH || revCRT || revIFVG || revIndBias))
-            flipActivated = true;
+            flipActivated = true;                                                       // IDM + konfirmasi lain
          else if(t1 >= 2)
-            flipActivated = true;
+            flipActivated = true;                                                       // Dua sinyal Tier 1
          else if(t1 >= 1 && t2 >= 1 && t3 >= 1)
-            flipActivated = true;
+            flipActivated = true;                                                       // Satu sinyal di tiap tier
          else if(revIndBias && (t1 >= 1 || t2 >= 1))
-            flipActivated = true;
+            flipActivated = true;                                                       // Bias indikator berbalik + Tier 1/2
       }
 
       if(flipActivated)
@@ -3134,6 +3191,12 @@ private:
    bool                    m_abandonStuckCycle;
    datetime                m_ddHaltBar;
 
+   //--- v1.33
+   bool                    m_flipInheritSL;     // Flip memakai jarak SL entry awal (RR presisi & matematika martingale konsisten)
+   bool                    m_commentReason;     // Tulis alasan entry di komentar order MT5
+   double                  m_lastSLDistPx;      // Jarak SL final order terakhir (harga)
+   double                  m_lastTPDistPx;      // Jarak TP final order terakhir (harga)
+
    SRecoveryState          m_state;
    datetime                m_lastEntrySignalBar;
    string                  m_lastRuntimeWarning;
@@ -3156,6 +3219,32 @@ private:
       Print("[GT Recovery Engine] ", msg);
    }
 
+   //--- [v1.33] Susun komentar order: "<TAG>|<alasan>" (maks 31 karakter, batas MT5).
+   //    Awalan tag (GT_ENTRY_L0 / GT_FLIP_Ln / GT_CLASSIC_Ln) TIDAK diubah karena
+   //    SyncFromOpenPositions() membaca level & mode dari awalan ini.
+   string MakeComment(const string tag, const string reason) const
+   {
+      if(!m_commentReason || reason == "")
+         return tag;
+
+      string r = reason;
+      StringReplace(r, " ", "");
+      string c = tag + "|" + r;
+      if(StringLen(c) > 31)
+         c = StringSubstr(c, 0, 31);
+      return c;
+   }
+
+   //--- [v1.33] "BUY(8): CRT_Bull+xSSL" -> "CRT_Bull+xSSL"
+   string CompactSignalReason(const string fullReason) const
+   {
+      int p = StringFind(fullReason, ": ");
+      if(p >= 0)
+         return StringSubstr(fullReason, p + 2);
+      return fullReason;
+   }
+
+   //--- Menghitung jarak SL & TP final (dalam harga) untuk satu order.
    bool ResolveOrderSLTP(const ENUM_GT_DIR dir,
                          const double entryPrice,
                          const double orderLot,
@@ -3182,6 +3271,7 @@ private:
 
       if(m_sltpMode == GT_SLTP_INDICATOR)
       {
+         // Entry awal: SL/TP dari indikator. Flip: indikator TIDAK dipakai (rawSL/rawTP = 0)
          double rawSL = (!isFlipRecovery) ? (isBuy ? ind.buySL : ind.sellSL) : 0.0;
          double rawTP = (!isFlipRecovery) ? (isBuy ? ind.buyTP : ind.sellTP) : 0.0;
 
@@ -3239,6 +3329,25 @@ private:
          tpDistPx = pipConv.NormalizePrice(slDistPx * targetRR);
       }
 
+      //--- [v1.33] FLIP MEWARISI JARAK SL ENTRY AWAL.
+      //    Sebelumnya Flip memakai SL fallback (InpFixedSLPips) yang BERBEDA dari SL struktural L0,
+      //    sehingga rasio kerugian L0 vs target TP Flip tidak konsisten dengan RR/multiplier.
+      //    Sekarang: SL Flip = SL siklus (dijaga >= StopsLevel & >= GridStep/RR), TP = SL x RR persis.
+      //    Mode Fixed Pip tidak diubah (SL/TP sudah tetap sama di semua level).
+      if(isFlipRecovery && m_flipInheritSL &&
+         m_sltpMode != GT_SLTP_FIXED_PIP && m_state.cycleSLDistPx > 0.0 && targetRR > 0.0)
+      {
+         double inhSL = m_state.cycleSLDistPx;
+         if(inhSL < minStopPx)
+            inhSL = minStopPx;
+         double minSLForGridPx2 = gridStepPx / targetRR;
+         if(inhSL < minSLForGridPx2)
+            inhSL = minSLForGridPx2;
+
+         slDistPx = pipConv.NormalizePrice(inhSL);
+         tpDistPx = pipConv.NormalizePrice(slDistPx * targetRR);
+      }
+
       if(isFlipRecovery && m_flipAutoCoverLossTP && m_state.realizedCyclePL < 0.0 && orderLot > 0.0)
       {
          double pipValOrder = pipConv.GetPipValuePerLot() * orderLot;
@@ -3271,7 +3380,9 @@ private:
          if(m_alertsEnabled && !MQLInfoInteger(MQL_OPTIMIZATION))
             Alert("[GT Recovery Engine] ", vr.errorMessage);
 
-         if(m_rejectInvalidIndTP)
+         //--- [v1.33] Order FLIP tidak boleh ditolak (siklus tanpa posisi akan macet tanpa hedge).
+         //    Entry awal/klasik tetap boleh ditolak jika InpRejectInvalidIndTP aktif.
+         if(m_rejectInvalidIndTP && !isFlipRecovery)
             return false;
 
          if(tpPipsActual < m_gridStepPips)
@@ -3342,29 +3453,44 @@ private:
          return false;
       }
 
-      //--- Post-Fill Exact SL/TP Re-Anchor (RR 1:2 tetap presisi walau ada slippage)
+      //--- Post-Fill Exact SL/TP Re-Anchor (RR tetap presisi walau ada slippage)
       executedPrice = (m_trade.ResultPrice() > 0.0) ? m_trade.ResultPrice() : entryPrice;
       double finalSL = sl;
       double finalTP = tp;
 
       if(slDistPx > 0.0 && tpDistPx > 0.0)
       {
-         ulong  posTicket  = 0;
-         datetime newestOT = 0;
-         for(int i = PositionsTotal() - 1; i >= 0; i--)
+         //--- [v1.33] Cari tiket posisi lewat DEAL ID hasil order (akurat 100%).
+         //    Versi lama memilih "posisi terbaru berdasarkan detik" yang bisa salah tiket
+         //    bila ada >1 posisi searah dalam detik yang sama.
+         ulong posTicket = 0;
+         ulong dealTk    = m_trade.ResultDeal();
+         if(dealTk > 0 && HistoryDealSelect(dealTk))
          {
-            ulong t = PositionGetTicket(i);
-            if(t == 0) continue;
-            if(PositionGetString(POSITION_SYMBOL) != m_symbol) continue;
-            if(PositionGetInteger(POSITION_MAGIC) != m_magic)  continue;
-            long pType = PositionGetInteger(POSITION_TYPE);
-            if((isBuy && pType != POSITION_TYPE_BUY) || (!isBuy && pType != POSITION_TYPE_SELL))
-               continue;
-            datetime ot = (datetime)PositionGetInteger(POSITION_TIME);
-            if(ot >= newestOT)
+            ulong posId = (ulong)HistoryDealGetInteger(dealTk, DEAL_POSITION_ID);
+            if(posId > 0 && PositionSelectByTicket(posId))
+               posTicket = posId;
+         }
+
+         //--- Fallback: pindai posisi terbaru searah (perilaku lama)
+         if(posTicket == 0)
+         {
+            datetime newestOT = 0;
+            for(int i = PositionsTotal() - 1; i >= 0; i--)
             {
-               newestOT  = ot;
-               posTicket = t;
+               ulong t = PositionGetTicket(i);
+               if(t == 0) continue;
+               if(PositionGetString(POSITION_SYMBOL) != m_symbol) continue;
+               if(PositionGetInteger(POSITION_MAGIC) != m_magic)  continue;
+               long pType = PositionGetInteger(POSITION_TYPE);
+               if((isBuy && pType != POSITION_TYPE_BUY) || (!isBuy && pType != POSITION_TYPE_SELL))
+                  continue;
+               datetime ot = (datetime)PositionGetInteger(POSITION_TIME);
+               if(ot >= newestOT)
+               {
+                  newestOT  = ot;
+                  posTicket = t;
+               }
             }
          }
 
@@ -3382,10 +3508,27 @@ private:
 
                if(MathAbs(exactSL - curSL) >= tickSz || MathAbs(exactTP - curTP) >= tickSz)
                {
-                  if(m_trade.PositionModify(posTicket, exactSL, exactTP))
+                  //--- [v1.33] Coba hingga 3x dan LOG bila gagal (sebelumnya gagal diam-diam,
+                  //    sehingga SL/TP tetap meleset dari RR tanpa ada peringatan).
+                  bool modOK = false;
+                  for(int attempt = 0; attempt < 3 && !modOK; attempt++)
+                  {
+                     if(attempt > 0)
+                        Sleep(150);
+                     modOK = m_trade.PositionModify(posTicket, exactSL, exactTP);
+                  }
+
+                  if(modOK)
                   {
                      finalSL = exactSL;
                      finalTP = exactTP;
+                  }
+                  else
+                  {
+                     finalSL = curSL;
+                     finalTP = curTP;
+                     PrintFormat("[GT Recovery Engine][WARN] Re-anchor SL/TP GAGAL (Ticket=%I64u RetCode=%u %s). SL/TP tetap di nilai order awal (bisa meleset dari RR akibat slippage).",
+                                 posTicket, m_trade.ResultRetcode(), m_trade.ResultRetcodeDescription());
                   }
                }
             }
@@ -3395,6 +3538,10 @@ private:
       double actualSLPips = (finalSL > 0.0) ? pipConv.PriceToPips(MathAbs(executedPrice - finalSL)) : 0.0;
       double actualTPPips = (finalTP > 0.0) ? pipConv.PriceToPips(MathAbs(finalTP - executedPrice)) : 0.0;
       double actualRR     = (actualSLPips > 0.0) ? (actualTPPips / actualSLPips) : 0.0;
+
+      //--- [v1.33] Simpan jarak SL/TP aktual (harga) agar bisa diwariskan ke Flip
+      m_lastSLDistPx = (finalSL > 0.0) ? MathAbs(executedPrice - finalSL) : slDistPx;
+      m_lastTPDistPx = (finalTP > 0.0) ? MathAbs(finalTP - executedPrice) : tpDistPx;
 
       LogAction(StringFormat("OPEN %s | Lot=%.2f | Open=%s | SL=%s (%.1f pip) | TP=%s (%.1f pip) | RR=1:%.2f | %s",
                              GT_DirToString(dir),
@@ -3513,6 +3660,10 @@ public:
       m_alertsEnabled        = true;
       m_abandonStuckCycle    = true;
       m_ddHaltBar            = 0;
+      m_flipInheritSL        = true;
+      m_commentReason        = true;
+      m_lastSLDistPx         = 0.0;
+      m_lastTPDistPx         = 0.0;
       m_lastEntrySignalBar   = 0;
       m_lastRuntimeWarning   = "";
       m_lastActionLog        = "Engine Initialized";
@@ -3580,6 +3731,10 @@ public:
 
    //--- v1.32
    void SetAbandonStuckCycle(const bool v) { m_abandonStuckCycle = v; }
+
+   //--- v1.33
+   void SetFlipInheritSL(const bool v)      { m_flipInheritSL = v; }
+   void SetCommentEntryReason(const bool v) { m_commentReason = v; }
 
    SRecoveryState GetState() const          { return m_state; }
    string         GetRuntimeWarning() const { return m_lastRuntimeWarning; }
@@ -3651,6 +3806,7 @@ public:
             string cmt  = PositionGetString(POSITION_COMMENT);
             datetime ot = (datetime)PositionGetInteger(POSITION_TIME);
 
+            // Level dibaca dari "_L<angka>" di awal komentar (alasan setelah '|' diabaikan)
             int posL = StringFind(cmt, "_L");
             if(posL >= 0)
             {
@@ -3663,6 +3819,15 @@ public:
                newestTime = ot;
                if(StringFind(cmt, "GT_FLIP_") >= 0)         parsedMode = GT_REC_FLIP;
                else if(StringFind(cmt, "GT_CLASSIC_") >= 0) parsedMode = GT_REC_CLASSIC;
+            }
+
+            //--- [v1.33] Pulihkan jarak SL siklus dari posisi terbuka (setelah restart EA / ganti chart)
+            if(m_state.cycleSLDistPx <= 0.0)
+            {
+               double pSL = PositionGetDouble(POSITION_SL);
+               double pOP = PositionGetDouble(POSITION_PRICE_OPEN);
+               if(pSL > 0.0 && pOP > 0.0)
+                  m_state.cycleSLDistPx = MathAbs(pOP - pSL);
             }
          }
 
@@ -3733,6 +3898,7 @@ public:
       double dealPrice  = HistoryDealGetDouble(dealTicket, DEAL_PRICE);
       double dealVol    = HistoryDealGetDouble(dealTicket, DEAL_VOLUME);
 
+      // Deal penutup BUY berjenis SELL (dan sebaliknya) -> arah posisi yang baru ditutup
       ENUM_GT_DIR closedPosDir = (dealType == DEAL_TYPE_SELL) ? GT_DIR_BUY : GT_DIR_SELL;
 
       m_state.realizedCyclePL += dealPL;
@@ -3763,6 +3929,7 @@ public:
          }
 
          //--- 2. Direct Flip saat SL
+         //    ALASAN ENTRY FLIP: posisi sebelumnya kena SL -> langsung balik arah dengan lot x multiplier
          if(directOnSL && (dealReason == DEAL_REASON_SL || dealPL < 0.0 || m_state.flipCycleLocked))
          {
             ENUM_GT_DIR nextFlipDir = (closedPosDir == GT_DIR_BUY) ? GT_DIR_SELL : GT_DIR_BUY;
@@ -3898,7 +4065,8 @@ public:
       }
 
       //================================================================
-      // BRANCH 1: POST-SL RECOVERY
+      // BRANCH 1: POST-SL RECOVERY (tidak ada posisi, siklus menunggu entry lanjutan)
+      // ALASAN ENTRY: posisi sebelumnya ditutup SL -> recovery level berikutnya
       //================================================================
       if(openCount == 0 && m_state.pendingPostSLReEval)
       {
@@ -3912,10 +4080,12 @@ public:
          double nextLot = pipConv.CalcNextRecoveryLot(m_state.lastLot, m_multiplier);
          double execPx = 0.0, execLot = 0.0;
 
+         //--- 1A. DIRECT FLIP: tanpa evaluasi probabilitas, langsung balik arah dari posisi yang kena SL
          if(useDirectFlipNow)
          {
             ENUM_GT_DIR flipDir = (m_state.lastLostDir == GT_DIR_BUY) ? GT_DIR_SELL : GT_DIR_BUY;
-            string tag = StringFormat("GT_FLIP_L%d", nextLevel);
+            string reasonFlip = StringFormat("DirectFlip(%sSL)", GT_DirToString(m_state.lastLostDir));
+            string tag = MakeComment(StringFormat("GT_FLIP_L%d", nextLevel), reasonFlip);
 
             if(SendMarketOrder(flipDir, nextLot, true, pipConv, ind, tag, execPx, execLot))
             {
@@ -3928,7 +4098,10 @@ public:
                m_state.lastLot             = execLot;
                m_state.lastActionBarTime   = curBarTime;
                m_state.pendingPostSLReEval = false;
+               m_state.lastEntryReason     = reasonFlip;
                m_state.flipCount++;
+               if(m_state.cycleSLDistPx <= 0.0)
+                  m_state.cycleSLDistPx = m_lastSLDistPx;
 
                probEngine.Evaluate(flipDir, ctx, ind);
                LogAction(StringFormat("DIRECT FLIP EXECUTED: %s SL -> Langsung %s | Lot=%.2f | Level=%d [WAJIB TP]",
@@ -3938,14 +4111,19 @@ public:
             return;
          }
 
+         //--- 1B. Mode Probability-Gated / Hybrid awal: evaluasi skor reversal vs kontinuasi
          SProbabilityDecision dec = probEngine.Evaluate(m_state.lastLostDir, ctx, ind);
          if(!dec.allowExecution)
             return;
 
          bool   isFlipOrder = (dec.mode == GT_REC_FLIP || m_state.flipCycleLocked);
+         // Alasan: faktor reversal aktif (untuk Flip) atau skor kontinuasi (untuk Klasik)
+         string reasonProb  = (dec.mode == GT_REC_FLIP)
+                              ? ("ProbFlip:" + dec.activeReversalFactors)
+                              : StringFormat("ProbKlasik:Kont%d", dec.continuationScore);
          string tag = (dec.mode == GT_REC_FLIP)
-                      ? StringFormat("GT_FLIP_L%d", nextLevel)
-                      : StringFormat("GT_CLASSIC_L%d", nextLevel);
+                      ? MakeComment(StringFormat("GT_FLIP_L%d", nextLevel), reasonProb)
+                      : MakeComment(StringFormat("GT_CLASSIC_L%d", nextLevel), reasonProb);
 
          if(SendMarketOrder(dec.recommendedDir, nextLot, isFlipOrder, pipConv, ind, tag, execPx, execLot))
          {
@@ -3959,6 +4137,9 @@ public:
             m_state.lastLot             = execLot;
             m_state.lastActionBarTime   = curBarTime;
             m_state.pendingPostSLReEval = false;
+            m_state.lastEntryReason     = reasonProb;
+            if(m_state.cycleSLDistPx <= 0.0)
+               m_state.cycleSLDistPx = m_lastSLDistPx;
             if(dec.mode == GT_REC_FLIP) m_state.flipCount++;
             else                        m_state.classicCount++;
 
@@ -3969,18 +4150,23 @@ public:
 
       //================================================================
       // BRANCH 2: INITIAL ENTRY ENGINE (GT_ENTRY_L0)
+      // ALASAN ENTRY: sinyal ICT+SMC+CRT valid (skor & token konfluensi tercatat di signalReason)
       //================================================================
       if(openCount == 0)
       {
+         // Siklus Flip belum TP -> dilarang mencari sinyal baru
          if(m_flipMustEndInTP && m_state.flipCycleLocked)
             return;
 
+         // Safety: DD harian / floating loss / emergency / max posisi
          if(!safety.CanOpenNewEntry())
             return;
 
+         // Opsional: hanya entry di dalam KillZone
          if(m_onlyEntryInKillZone && !ctx.inKillZone)
             return;
 
+         // Satu sinyal hanya boleh dipakai sekali (per bar sinyal)
          if(!ind.valid || ind.barTime == m_lastEntrySignalBar)
             return;
 
@@ -3994,7 +4180,9 @@ public:
             return;
 
          double execPx = 0.0, execLot = 0.0;
-         if(SendMarketOrder(entryDir, m_initialLot, false, pipConv, ind, "GT_ENTRY_L0", execPx, execLot))
+         string reasonL0 = CompactSignalReason(ind.signalReason);   // mis. "CRT_Bull+xSSL+CHoCH+OTE"
+         string tagL0    = MakeComment("GT_ENTRY_L0", reasonL0);
+         if(SendMarketOrder(entryDir, m_initialLot, false, pipConv, ind, tagL0, execPx, execLot))
          {
             m_lastEntrySignalBar        = ind.barTime;
             m_state.Reset();
@@ -4005,18 +4193,25 @@ public:
             m_state.lastEntryPrice      = execPx;
             m_state.lastLot             = execLot;
             m_state.lastActionBarTime   = curBarTime;
+            m_state.lastEntryReason     = reasonL0;
+            //--- [v1.33] Simpan jarak SL/TP entry awal -> diwariskan ke seluruh Flip siklus ini
+            m_state.cycleSLDistPx       = m_lastSLDistPx;
+            m_state.cycleTPDistPx       = m_lastTPDistPx;
+            LogAction("ALASAN ENTRY L0: " + ind.signalReason);
          }
          return;
       }
 
       //================================================================
       // BRANCH 3: OPEN POSITIONS -> ADVERSE STEP TRIGGERS RE-EVALUATION
+      // ALASAN ENTRY: harga melawan posisi >= Grid Step -> Flip (reversal kuat) atau Klasik (tren sehat)
       //================================================================
       if(!m_state.cycleActive)
          SyncFromOpenPositions();
 
       SProbabilityDecision liveDec = probEngine.Evaluate(openDir, ctx, ind);
 
+      // Direct Flip / Hybrid terkunci: tidak ada averaging, recovery hanya lewat SL -> Flip
       if(m_flipExecMode == GT_FLIP_DIRECT_ON_SL ||
          (m_flipExecMode == GT_FLIP_HYBRID_LOCK && m_state.flipCycleLocked))
          return;
@@ -4033,6 +4228,7 @@ public:
       if(adversePips < m_gridStepPips)
          return;
 
+      // Satu aksi recovery per bar
       if(curBarTime == m_state.lastActionBarTime)
          return;
 
@@ -4055,7 +4251,8 @@ public:
          }
 
          double execPx = 0.0, execLot = 0.0;
-         string tag = StringFormat("GT_FLIP_L%d", nextLevel);
+         string reasonAdvFlip = StringFormat("Adv%.0fp|", adversePips) + liveDec.activeReversalFactors;
+         string tag = MakeComment(StringFormat("GT_FLIP_L%d", nextLevel), reasonAdvFlip);
          if(SendMarketOrder(liveDec.recommendedDir, nextLot, true, pipConv, ind, tag, execPx, execLot))
          {
             m_state.cycleActive         = true;
@@ -4067,6 +4264,9 @@ public:
             m_state.lastLot             = execLot;
             m_state.lastActionBarTime   = curBarTime;
             m_state.pendingPostSLReEval = false;
+            m_state.lastEntryReason     = reasonAdvFlip;
+            if(m_state.cycleSLDistPx <= 0.0)
+               m_state.cycleSLDistPx = m_lastSLDistPx;
             m_state.flipCount++;
          }
       }
@@ -4078,7 +4278,8 @@ public:
             return;
 
          double execPx = 0.0, execLot = 0.0;
-         string tag = StringFormat("GT_CLASSIC_L%d", nextLevel);
+         string reasonAdvClassic = StringFormat("Grid%.0fp|Kont%d", adversePips, liveDec.continuationScore);
+         string tag = MakeComment(StringFormat("GT_CLASSIC_L%d", nextLevel), reasonAdvClassic);
          if(SendMarketOrder(openDir, nextLot, m_state.flipCycleLocked, pipConv, ind, tag, execPx, execLot))
          {
             m_state.cycleActive         = true;
@@ -4089,6 +4290,7 @@ public:
             m_state.lastLot             = execLot;
             m_state.lastActionBarTime   = curBarTime;
             m_state.pendingPostSLReEval = false;
+            m_state.lastEntryReason     = reasonAdvClassic;
             m_state.classicCount++;
 
             LogAction("MARTINGALE KLASIK: " + liveDec.summaryReason);
@@ -4524,12 +4726,14 @@ input double                  InpFixedSLPips            = 20.0;              // 
 input double                  InpFixedTPPips            = 40.0;              // TP Fixed / Fallback Indikator (Pip)
 input bool                    InpOnlyEntryInKillZone    = false;             // Entry Awal Hanya Saat KillZone
 input double                  InpMaxSpreadPips          = 0.0;               // Spread Maksimal dalam Pip (0 = Off)
-input bool                    InpRejectInvalidIndTP     = true;              // Tolak Order jika TP Indikator < Grid Step
+input bool                    InpRejectInvalidIndTP     = true;              // Tolak Order jika TP Indikator < Grid Step (Flip tidak pernah ditolak)
 input bool                    InpStrictRRValidation     = false;             // Tolak Init/Order jika RR Tidak Sesuai (False=Warning)
 input bool                    InpEnforceExactRR         = true;              // Kunci Presisi Rasio SL:TP Sesuai RR (1:2 Tepat)
+input bool                    InpCommentEntryReason     = true;              // [v1.33] Tulis Alasan Entry di Komentar Order MT5
 
 input group "=== 3. Recovery Engine (Direct Flip / Hybrid / Martingale Klasik) ==="
 input ENUM_GT_FLIP_EXEC_MODE  InpFlipExecMode           = GT_FLIP_DIRECT_ON_SL; // Mode Eksekusi Flip (Default: Direct Flip Saat SL)
+input bool                    InpFlipInheritSL          = true;                 // [v1.33] Flip Pakai Jarak SL Sama dengan Entry Awal (RR Presisi)
 input ENUM_GT_GRID_STEP       InpGridStepMode           = GT_GRID_20_PIP;       // Pilihan Grid Step
 input double                  InpCustomGridStepPips     = 25.0;                 // Custom Grid Step (Pip)
 input ENUM_GT_LOT_MULT        InpMultiplierMode         = GT_MULT_1_5;          // Pilihan Multiplier Lot
@@ -4806,6 +5010,9 @@ int OnInit()
                  InpFlipAutoCoverLossTP,
                  InpEnableAlerts);
    g_engine.SetAbandonStuckCycle(InpAbandonCycleOnHalt);
+   g_engine.SetFlipInheritSL(InpFlipInheritSL);              // v1.33
+   g_engine.SetCommentEntryReason(InpCommentEntryReason);    // v1.33
+   // Catatan: SyncFromOpenPositions() sudah dipanggil di Init(); setter di atas tidak memengaruhi sinkronisasi.
 
    g_panel.Init(InpShowPanel, InpPanelX, InpPanelY);
 
@@ -4834,11 +5041,12 @@ int OnInit()
    if(!MQLInfoInteger(MQL_OPTIMIZATION))
       EventSetTimer(1);
 
-   PrintFormat("[GT Recovery Engine] SIAP v1.32 | Symbol=%s (%s, %d digits, 1 pip=%.0f pts) | Grid=%.1f pip | Mult=%.2fx | RR=1:%.2f | MaxLv=%d | DD Resume=%s",
+   PrintFormat("[GT Recovery Engine] SIAP v1.33 | Symbol=%s (%s, %d digits, 1 pip=%.0f pts) | Grid=%.1f pip | Mult=%.2fx | RR=1:%.2f | MaxLv=%d | DD Resume=%s | FlipInheritSL=%s",
                _Symbol, g_pipConv.GetAssetClassName(), g_pipConv.Digits(),
                g_pipConv.PointsPerPip(), g_gridStepPips, g_multiplier,
                g_rrRatio, InpMaxMartingaleLevel,
-               InpDDResumeOnSignal ? "SINYAL BARU" : "HARI BERIKUTNYA");
+               InpDDResumeOnSignal ? "SINYAL BARU" : "HARI BERIKUTNYA",
+               InpFlipInheritSL ? "ON" : "OFF");
 
    return INIT_SUCCEEDED;
 }
