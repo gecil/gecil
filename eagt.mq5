@@ -5,19 +5,12 @@
 //|             Powered by ICT_SMC_CRT + ICT/SMC/CRT Structure       |
 //+------------------------------------------------------------------+
 #property copyright   "Copyright 2026, GT Recovery Engine"
-#property version     "1.31"
+#property version     "1.32"
 #property description "GT Recovery Engine (All-in-One): ICT+SMC+CRT Entry + Direct Flip Martingale (Buy SL->Sell, Sell SL->Buy Sampai TP)"
-#property description "1 File Standalone EA: Exact Precision RR Lock (1:2 Presisi + Post-Fill Slippage Re-Anchor)"
+#property description "v1.32: Daily DD Resume-On-Signal (lanjut entry saat sinyal baru, tanpa tunggu hari berikutnya) + Anti-Deadlock Siklus"
 #property strict
 
 #include <Trade\Trade.mqh>
-
-//+------------------------------------------------------------------+
-//|                                                     GT_Types.mqh |
-//|                                  GT Recovery Engine - Core Types |
-//|                     ICT + SMC + CRT Probability Recovery System  |
-//+------------------------------------------------------------------+
-
 
 //--- Chart object prefix
 #define GT_OBJ_PREFIX "GTRE_"
@@ -25,15 +18,12 @@
 //+------------------------------------------------------------------+
 //| Enumerations                                                     |
 //+------------------------------------------------------------------+
-
-//--- Signal Source Mode (All-in-One Internal vs External iCustom)
 enum ENUM_GT_SIGNAL_SOURCE
 {
    GT_SRC_INTERNAL_ALL_IN_ONE = 0, // All-in-One Internal ICT+SMC+CRT (1 File EA)
    GT_SRC_EXTERNAL_ICUSTOM    = 1  // Indikator Eksternal ICT_SMC_CRT (iCustom)
 };
 
-//--- Internal All-in-One Signal Sensitivity
 enum ENUM_GT_ENTRY_SENSITIVITY
 {
    GT_SENS_CONSERVATIVE = 0,       // Konservatif (Konfluensi Ketat)
@@ -41,7 +31,6 @@ enum ENUM_GT_ENTRY_SENSITIVITY
    GT_SENS_AGGRESSIVE   = 2        // Agresif (Frekuensi Sinyal Tinggi)
 };
 
-//--- Market Bias from ICT_SMC_CRT (Internal or Buffer 6)
 enum ENUM_GT_BIAS
 {
    GT_BIAS_BEARISH = -1,
@@ -49,7 +38,6 @@ enum ENUM_GT_BIAS
    GT_BIAS_BULLISH =  1
 };
 
-//--- Asset Class for Auto Pip Converter
 enum ENUM_GT_ASSET_CLASS
 {
    GT_ASSET_AUTO     = 0,  // Auto Detect (Forex/XAUUSD/Index/CFD)
@@ -62,7 +50,6 @@ enum ENUM_GT_ASSET_CLASS
    GT_ASSET_CUSTOM   = 7   // Custom Pip Size
 };
 
-//--- SL & TP Calculation Mode
 enum ENUM_GT_SLTP_MODE
 {
    GT_SLTP_INDICATOR   = 0, // SL/TP Indikator (Buffer ICT_SMC_CRT)
@@ -70,7 +57,6 @@ enum ENUM_GT_SLTP_MODE
    GT_SLTP_RISK_REWARD = 2  // Risk Reward (TP = SL x RR)
 };
 
-//--- Risk Reward Preset Menu
 enum ENUM_GT_RR_MODE
 {
    GT_RR_1_1    = 0,        // RR 1:1
@@ -79,7 +65,6 @@ enum ENUM_GT_RR_MODE
    GT_RR_CUSTOM = 3         // Custom RR
 };
 
-//--- Grid Step Preset Menu
 enum ENUM_GT_GRID_STEP
 {
    GT_GRID_10_PIP = 0,      // 10 Pip
@@ -88,7 +73,6 @@ enum ENUM_GT_GRID_STEP
    GT_GRID_CUSTOM = 3       // Custom Pip
 };
 
-//--- Lot Multiplier Preset Menu
 enum ENUM_GT_LOT_MULT
 {
    GT_MULT_1_2    = 0,      // 1.2x
@@ -98,14 +82,12 @@ enum ENUM_GT_LOT_MULT
    GT_MULT_CUSTOM = 4       // Custom Multiplier
 };
 
-//--- Floating Loss Limit Type
 enum ENUM_GT_LOSS_MODE
 {
    GT_LOSS_CURRENCY = 0,    // Mata Uang Akun (USD/Deposit Currency)
    GT_LOSS_PERCENT  = 1     // Persentase Balance (%)
 };
 
-//--- Active Recovery Method Selected by Engine
 enum ENUM_GT_RECOVERY_MODE
 {
    GT_REC_NONE    = 0,      // Standby (Belum Ada Recovery)
@@ -113,7 +95,6 @@ enum ENUM_GT_RECOVERY_MODE
    GT_REC_FLIP    = 2       // Flip Martingale (Balik Arah Recovery)
 };
 
-//--- Flip Execution Mode
 enum ENUM_GT_FLIP_EXEC_MODE
 {
    GT_FLIP_DIRECT_ON_SL = 0, // Direct Flip Saat SL (Buy SL->Sell, Sell SL->Buy Sampai TP)
@@ -121,7 +102,6 @@ enum ENUM_GT_FLIP_EXEC_MODE
    GT_FLIP_PROB_GATED   = 2  // Probability-Gated (Setiap Recovery Cek Skor Probabilitas ICT/SMC/CRT)
 };
 
-//--- Flip Signal Tier Hierarchy
 enum ENUM_GT_FLIP_TIER
 {
    GT_TIER_NONE = 0,        // Tidak Ada Sinyal Flip
@@ -130,7 +110,6 @@ enum ENUM_GT_FLIP_TIER
    GT_TIER_1    = 1         // Tier 1 (Sangat Kuat: IDM Sweep / xSSL / xBSL / CHoCH / CRT Reverse)
 };
 
-//--- Order Direction Helper
 enum ENUM_GT_DIR
 {
    GT_DIR_NONE =  0,
@@ -138,7 +117,6 @@ enum ENUM_GT_DIR
    GT_DIR_SELL = -1
 };
 
-//--- Classic Grid TP Behavior
 enum ENUM_GT_CLASSIC_TP_MODE
 {
    GT_CLASSIC_TP_BASKET     = 0, // Basket Recovery TP (Rata-rata + TP)
@@ -154,17 +132,17 @@ struct SIndicatorData
    datetime     barTime;
    double       buySignalRaw;
    double       sellSignalRaw;
-   bool         buySignal;       // Buffer 0 active
-   bool         sellSignal;      // Buffer 1 active
-   double       buySL;           // Buffer 2
-   double       buyTP;           // Buffer 3
-   double       sellSL;          // Buffer 4
-   double       sellTP;          // Buffer 5
-   ENUM_GT_BIAS bias;            // Buffer 6 / Internal Bias (1, -1, 0)
-   ENUM_GT_BIAS prevBias;        // Previous bar Bias
+   bool         buySignal;
+   bool         sellSignal;
+   double       buySL;
+   double       buyTP;
+   double       sellSL;
+   double       sellTP;
+   ENUM_GT_BIAS bias;
+   ENUM_GT_BIAS prevBias;
    bool         biasChangedToBull;
    bool         biasChangedToBear;
-   string       signalReason;    // Human-readable ICT+SMC+CRT confluence reason
+   string       signalReason;
 
    void Reset()
    {
@@ -196,8 +174,7 @@ struct SMarketContext
    double   highPrice;
    double   lowPrice;
 
-   //--- External Structure (BOS / CHoCH)
-   int      extTrend;            // 1 bullish, -1 bearish, 0 neutral
+   int      extTrend;
    double   lastExtHigh;
    double   lastExtLow;
    bool     bosBull;
@@ -205,8 +182,7 @@ struct SMarketContext
    bool     chochBull;
    bool     chochBear;
 
-   //--- Internal Structure (iBOS / iCHoCH)
-   int      intTrend;            // 1 bullish, -1 bearish, 0 neutral
+   int      intTrend;
    double   lastIntHigh;
    double   lastIntLow;
    bool     ibosBull;
@@ -214,21 +190,19 @@ struct SMarketContext
    bool     ichochBull;
    bool     ichochBear;
 
-   //--- Liquidity & Inducement (IDM, Sweep, xSSL, xBSL, EQH, EQL)
    double   idmHighLevel;
    double   idmLowLevel;
-   bool     idmSweptBull;        // Sell-side IDM swept & rejected upward (bullish catalyst)
-   bool     idmSweptBear;        // Buy-side IDM swept & rejected downward (bearish catalyst)
-   bool     sweepBull;           // General bullish liquidity sweep / fake breakdown
-   bool     sweepBear;           // General bearish liquidity sweep / fake breakout
-   bool     xSSL;                // External Sell-Side Liquidity swept (bullish reversal)
-   bool     xBSL;                // External Buy-Side Liquidity swept (bearish reversal)
+   bool     idmSweptBull;
+   bool     idmSweptBear;
+   bool     sweepBull;
+   bool     sweepBear;
+   bool     xSSL;
+   bool     xBSL;
    bool     eqhDetected;
    bool     eqlDetected;
-   bool     eqhSweptBear;        // Equal Highs swept -> bearish liquidity grab
-   bool     eqlSweptBull;        // Equal Lows swept -> bullish liquidity grab
+   bool     eqhSweptBear;
+   bool     eqlSweptBull;
 
-   //--- PD Arrays (OB, Breaker, FVG, IFVG, MB, VI, Void)
    bool     bullOBValid;
    double   bullOBHigh;
    double   bullOBLow;
@@ -248,28 +222,26 @@ struct SMarketContext
    double   bearFVGHigh;
    double   bearFVGLow;
 
-   bool     bullIFVG;            // Bearish FVG inverted upward -> bullish
-   bool     bearIFVG;            // Bullish FVG inverted downward -> bearish
+   bool     bullIFVG;
+   bool     bearIFVG;
 
-   bool     bullMB;              // Bullish Mitigation Block active
-   bool     bearMB;              // Bearish Mitigation Block active
+   bool     bullMB;
+   bool     bearMB;
 
-   bool     bullVI;              // Bullish Volume Imbalance
-   bool     bearVI;              // Bearish Volume Imbalance
+   bool     bullVI;
+   bool     bearVI;
 
-   bool     bullVoid;            // Bullish Liquidity Void
-   bool     bearVoid;            // Bearish Liquidity Void
+   bool     bullVoid;
+   bool     bearVoid;
 
-   //--- Dealing Range (Premium, Discount, OTE, EQ50)
    double   rangeHigh;
    double   rangeLow;
    double   eq50;
    bool     inPremium;
    bool     inDiscount;
-   bool     inBullOTE;           // 61.8% - 78.6% retracement in Discount
-   bool     inBearOTE;           // 61.8% - 78.6% retracement in Premium
+   bool     inBullOTE;
+   bool     inBearOTE;
 
-   //--- Higher-Timeframe Key Liquidity Levels (PDH, PDL, PWH, PWL)
    double   pdh;
    double   pdl;
    double   pwh;
@@ -279,13 +251,11 @@ struct SMarketContext
    bool     pwhSweptBear;
    bool     pwlSweptBull;
 
-   //--- Candle Range Theory (CRT Bull / CRT Bear)
    double   crtRefHigh;
    double   crtRefLow;
-   bool     crtBull;             // Swept HTF CRT Low & closed back inside -> Bullish CRT Reverse
-   bool     crtBear;             // Swept HTF CRT High & closed back inside -> Bearish CRT Reverse
+   bool     crtBull;
+   bool     crtBear;
 
-   //--- KillZone Session
    bool     inKillZone;
    string   killZoneName;
 
@@ -390,14 +360,13 @@ struct SScoreWeights
    int    wOTE;
    int    wDiscount;
    int    wPremium;
-   //--- Additional institutional confluence weights
    int    wSweep;
    int    wEQH_EQL;
    int    wBreaker;
    int    wMB_VI_Void;
-   int    wHTFLiq;       // PDH / PDL / PWH / PWL sweep
+   int    wHTFLiq;
    int    wKillZone;
-   int    wIndBiasFlip;  // ICT_SMC_CRT Bias flipped / opposite signal
+   int    wIndBiasFlip;
    bool   requireIntactStructureForClassic;
 };
 
@@ -408,8 +377,8 @@ struct SProbabilityDecision
 {
    ENUM_GT_RECOVERY_MODE mode;
    ENUM_GT_FLIP_TIER     highestTier;
-   ENUM_GT_DIR           evaluatedForDir;    // Direction currently in loss
-   ENUM_GT_DIR           recommendedDir;     // Target direction for recovery
+   ENUM_GT_DIR           evaluatedForDir;
+   ENUM_GT_DIR           recommendedDir;
    int                   reversalScore;
    int                   continuationScore;
    int                   threshold;
@@ -447,8 +416,8 @@ struct SProbabilityDecision
 //+------------------------------------------------------------------+
 struct SValidationResult
 {
-   bool   isValid;           // false -> reject config in OnInit
-   bool   hasWarning;        // true -> display warning (e.g., RR mismatch)
+   bool   isValid;
+   bool   hasWarning;
    string errorMessage;
    string warningMessage;
 
@@ -475,15 +444,15 @@ struct SSimulatorMetrics
    double slPips;
    double tpPips;
    double rrRatio;
-   double totalExposureLots;       // Cumulative lots from Level 0 .. MaxLevel
-   double maxSingleLevelLot;       // Lot at MaxLevel
-   double estClassicDrawdownMoney; // Worst-case grid drawdown in currency
-   double estClassicDrawdownPct;   // % of Balance
-   double estFlipDrawdownMoney;    // Worst-case consecutive SL Flip drawdown
-   double estFlipDrawdownPct;      // % of Balance
-   double targetRecoveryMoney;     // Expected recovery profit target at TP
-   double targetRecoveryPips;      // Required pips to recover
-   double pipValuePerLot;          // Money per 1 pip for 1.0 lot
+   double totalExposureLots;
+   double maxSingleLevelLot;
+   double estClassicDrawdownMoney;
+   double estClassicDrawdownPct;
+   double estFlipDrawdownMoney;
+   double estFlipDrawdownPct;
+   double targetRecoveryMoney;
+   double targetRecoveryPips;
+   double pipValuePerLot;
 
    void Reset()
    {
@@ -547,15 +516,15 @@ struct SSafetyStatus
 struct SRecoveryState
 {
    bool                  cycleActive;
-   bool                  flipCycleLocked;      // True saat siklus Flip aktif: WAJIB tuntas TP sebelum cari sinyal baru
+   bool                  flipCycleLocked;
    ENUM_GT_DIR           currentDir;
-   int                   currentLevel;         // 0 = initial entry, 1..Max = recovery
+   int                   currentLevel;
    ENUM_GT_RECOVERY_MODE lastMode;
    double                lastEntryPrice;
    double                lastLot;
-   double                realizedCyclePL;      // Accumulated closed P/L inside current cycle
+   double                realizedCyclePL;
    datetime              lastActionBarTime;
-   bool                  pendingPostSLReEval;  // True when SL closed a trade -> wait/run re-eval
+   bool                  pendingPostSLReEval;
    ENUM_GT_DIR           lastLostDir;
    double                lastLostPrice;
    int                   classicCount;
@@ -649,14 +618,6 @@ double GT_ResolveRR(const ENUM_GT_RR_MODE mode, const double customRR)
    return 2.0;
 }
 
-
-//+------------------------------------------------------------------+
-//|                                              GT_PipConverter.mqh |
-//|                            GT Recovery Engine - Auto Pip Engine  |
-//|        Consistent cross-broker pip detection (Forex/Gold/Idx/CFD)|
-//+------------------------------------------------------------------+
-
-
 //+------------------------------------------------------------------+
 //| CPipConverter: Automatic digit & instrument pip standardization  |
 //+------------------------------------------------------------------+
@@ -666,8 +627,8 @@ private:
    string              m_symbol;
    int                 m_digits;
    double              m_point;
-   double              m_pipSize;         // Price delta of 1 pip
-   double              m_pointsPerPip;    // Broker points in 1 pip
+   double              m_pipSize;
+   double              m_pointsPerPip;
    ENUM_GT_ASSET_CLASS m_detectedClass;
    ENUM_GT_ASSET_CLASS m_requestedClass;
    double              m_customPipSize;
@@ -685,17 +646,14 @@ private:
 
    ENUM_GT_ASSET_CLASS DetectAssetClass(const string symUpper) const
    {
-      //--- 1. Gold / XAU
       string goldPatterns[] = {"XAU", "GOLD"};
       if(ContainsAny(symUpper, goldPatterns))
          return GT_ASSET_GOLD;
 
-      //--- 2. Silver / XAG
       string silverPatterns[] = {"XAG", "SILVER"};
       if(ContainsAny(symUpper, silverPatterns))
          return GT_ASSET_SILVER;
 
-      //--- 3. Indices
       string idxPatterns[] = {
          "US30", "DJ30", "DJI", "WS30", "DOW",
          "NAS100", "USTEC", "US100", "NDX", "NQ",
@@ -707,17 +665,14 @@ private:
       if(ContainsAny(symUpper, idxPatterns))
          return GT_ASSET_INDEX;
 
-      //--- 4. Crypto
       string cryptoPatterns[] = {"BTC", "ETH", "SOL", "BNB", "XRP", "LTC", "ADA", "DOGE", "AVAX"};
       if(ContainsAny(symUpper, cryptoPatterns))
          return GT_ASSET_CRYPTO;
 
-      //--- 5. Commodities / Energy CFDs
       string oilPatterns[] = {"USOIL", "UKOIL", "WTI", "BRENT", "XTI", "XBR", "NGAS", "CRUDE", "OIL"};
       if(ContainsAny(symUpper, oilPatterns))
          return GT_ASSET_CFD;
 
-      //--- 6. Broker Calc Mode inspection
       long calcMode = SymbolInfoInteger(m_symbol, SYMBOL_TRADE_CALC_MODE);
       if(calcMode == SYMBOL_CALC_MODE_FOREX || calcMode == SYMBOL_CALC_MODE_FOREX_NO_LEVERAGE)
          return GT_ASSET_FOREX;
@@ -731,7 +686,6 @@ private:
          calcMode == SYMBOL_CALC_MODE_EXCH_STOCKS_MOEX)
          return GT_ASSET_CFD;
 
-      //--- 7. Standard Forex currency pair fallback
       string fxCurrencies[] = {"EUR", "USD", "GBP", "JPY", "CHF", "AUD", "NZD", "CAD"};
       int hits = 0;
       for(int i = 0; i < ArraySize(fxCurrencies); i++)
@@ -754,10 +708,8 @@ private:
       {
          case GT_ASSET_FOREX:
          {
-            //--- JPY pairs: 1 pip = 0.01 (3-digit broker -> 10 pts, 2-digit -> 1 pt)
             if(StringFind(symUpper, "JPY") >= 0)
                return 0.01;
-            //--- Standard FX: 1 pip = 0.0001 (5-digit broker -> 10 pts, 4-digit -> 1 pt)
             if(m_digits == 5 || m_digits == 4)
                return 0.0001;
             if(m_digits == 3 || m_digits == 2)
@@ -766,37 +718,26 @@ private:
          }
 
          case GT_ASSET_GOLD:
-         {
-            //--- Consistent across 1, 2, or 3 digit brokers: 1 pip on XAUUSD = $0.10
-            //--- (10 pips = $1.00 move -> 100 pts on 2-digit, 1000 pts on 3-digit)
             return 0.10;
-         }
 
          case GT_ASSET_SILVER:
-         {
-            //--- Consistent across 2 or 3 digit brokers: 1 pip on XAGUSD = $0.01
             return 0.01;
-         }
 
          case GT_ASSET_INDEX:
-         {
-            //--- Consistent across 0, 1, or 2 digit index brokers: 1 pip = 1.0 index point
             return 1.0;
-         }
 
          case GT_ASSET_CRYPTO:
          {
             double price = SymbolInfoDouble(m_symbol, SYMBOL_BID);
-            if(price >= 1000.0) return 1.0;     // e.g., BTCUSD, ETHUSD
-            if(price >= 10.0)   return 0.10;    // e.g., SOLUSD, LTCUSD
-            if(price >= 1.0)    return 0.01;    // e.g., XRPUSD
+            if(price >= 1000.0) return 1.0;
+            if(price >= 10.0)   return 0.10;
+            if(price >= 1.0)    return 0.01;
             return (m_digits >= 4) ? 0.0001 : m_point * 10.0;
          }
 
          case GT_ASSET_CFD:
          default:
          {
-            //--- Energy / Stock CFDs: 2-digit -> 0.01 (1 pt), 3-digit -> 0.01 (10 pts)
             if(m_digits == 3) return 0.01;
             if(m_digits == 2) return 0.01;
             if(m_digits == 1) return 0.1;
@@ -849,7 +790,6 @@ public:
       return true;
    }
 
-   //--- Core Accessors
    string              SymbolName()    const { return m_symbol; }
    int                 Digits()        const { return m_digits; }
    double              PointSize()     const { return m_point; }
@@ -872,11 +812,7 @@ public:
       }
    }
 
-   //--- Unit Conversions
-   double PipsToPrice(const double pips) const
-   {
-      return pips * m_pipSize;
-   }
+   double PipsToPrice(const double pips) const { return pips * m_pipSize; }
 
    double PriceToPips(const double priceDiff) const
    {
@@ -884,10 +820,7 @@ public:
       return priceDiff / m_pipSize;
    }
 
-   double PipsToPoints(const double pips) const
-   {
-      return pips * m_pointsPerPip;
-   }
+   double PipsToPoints(const double pips) const { return pips * m_pointsPerPip; }
 
    double PointsToPips(const double points) const
    {
@@ -895,7 +828,6 @@ public:
       return points / m_pointsPerPip;
    }
 
-   //--- Monetary Value Calculations
    double GetPipValuePerLot() const
    {
       double tickSize = SymbolInfoDouble(m_symbol, SYMBOL_TRADE_TICK_SIZE);
@@ -903,7 +835,6 @@ public:
       if(tickSize > 0.0 && tickVal > 0.0)
          return (m_pipSize / tickSize) * tickVal;
 
-      //--- Offline/fallback calculation
       double contract = SymbolInfoDouble(m_symbol, SYMBOL_TRADE_CONTRACT_SIZE);
       if(contract > 0.0)
          return contract * m_pipSize;
@@ -916,7 +847,6 @@ public:
       return lots * pips * GetPipValuePerLot();
    }
 
-   //--- Broker-safe Price & Lot Normalization
    double NormalizePrice(const double price) const
    {
       double tickSize = SymbolInfoDouble(m_symbol, SYMBOL_TRADE_TICK_SIZE);
@@ -964,7 +894,6 @@ public:
       double raw  = base * multiplier;
       double next = MathRound(raw / lotStep) * lotStep;
 
-      //--- Ensure true upward Martingale progression even on 0.01 micro lots when multiplier > 1.0
       if(multiplier > 1.0 && next <= base + 1e-10)
          next = base + lotStep;
 
@@ -986,23 +915,12 @@ public:
    }
 };
 
-
-//+------------------------------------------------------------------+
-//|                                                 GT_Validator.mqh |
-//|                     GT Recovery Engine - RR & Pip Validator      |
-//|        Enforces TP >= Grid Step & SL/TP Risk-Reward integrity    |
-//+------------------------------------------------------------------+
-
-
 //+------------------------------------------------------------------+
 //| CConfigValidator                                                 |
 //+------------------------------------------------------------------+
 class CConfigValidator
 {
 public:
-   //+----------------------------------------------------------------+
-   //| Validate EA Parameters during OnInit                           |
-   //+----------------------------------------------------------------+
    static SValidationResult ValidateInit(const CPipConverter &pipConv,
                                          const ENUM_GT_SLTP_MODE sltpMode,
                                          const ENUM_GT_RR_MODE rrMode,
@@ -1021,7 +939,6 @@ public:
 
       double targetRR = GT_ResolveRR(rrMode, customRR);
 
-      //--- 1. Basic parameter sanity checks
       if(gridStepPips <= 0.0)
       {
          res.isValid      = false;
@@ -1072,7 +989,6 @@ public:
          return res;
       }
 
-      //--- 2. Resolve Effective SL & TP for Init Validation
       double effSLPips = fixedSLPips;
       double effTPPips = fixedTPPips;
 
@@ -1095,14 +1011,12 @@ public:
             return res;
          }
       }
-      else // GT_SLTP_INDICATOR
+      else
       {
-         //--- Validate fallback SL/TP so fallback never violates Grid Step
          if(effSLPips > 0.0 && effTPPips <= 0.0)
             effTPPips = effSLPips * targetRR;
       }
 
-      //--- 3. MANDATORY RULE: TP MUST NOT BE SMALLER THAN GRID STEP
       if(effTPPips > 0.0 && effTPPips + 1e-6 < gridStepPips)
       {
          res.isValid      = false;
@@ -1111,7 +1025,6 @@ public:
          return res;
       }
 
-      //--- 4. MANDATORY RULE: CHECK RR CONSISTENCY AGAINST SL & TP
       if(effSLPips > 0.0 && effTPPips > 0.0)
       {
          double actualRR   = effTPPips / effSLPips;
@@ -1131,7 +1044,6 @@ public:
          }
       }
 
-      //--- 5. Broker StopLevel Warning
       double minStopPips = pipConv.GetMinStopPips();
       if(minStopPips > 0.0 && effSLPips > 0.0 && effSLPips < minStopPips)
       {
@@ -1144,9 +1056,6 @@ public:
       return res;
    }
 
-   //+----------------------------------------------------------------+
-   //| Runtime validation for dynamic Indicator SL/TP before order    |
-   //+----------------------------------------------------------------+
    static SValidationResult ValidateRuntimeSLTP(const double slPips,
                                                 const double tpPips,
                                                 const double gridStepPips,
@@ -1156,7 +1065,6 @@ public:
       SValidationResult res;
       res.Reset();
 
-      //--- Reject if TP < Grid Step
       if(tpPips > 0.0 && tpPips + 1e-6 < gridStepPips)
       {
          res.isValid      = false;
@@ -1165,7 +1073,6 @@ public:
          return res;
       }
 
-      //--- Warn if SL/TP ratio does not match selected RR
       if(slPips > 0.0 && tpPips > 0.0 && targetRR > 0.0)
       {
          double actualRR = tpPips / slPips;
@@ -1186,22 +1093,12 @@ public:
    }
 };
 
-
 //+------------------------------------------------------------------+
-//|                                           GT_MarketStructure.mqh |
-//|           GT Recovery Engine - ICT + SMC + CRT Structure Engine  |
-//|  Detects BOS, CHoCH, iBOS, iCHoCH, IDM, Sweep, xSSL, xBSL,       |
-//|  EQH, EQL, OB, Breaker, FVG, IFVG, MB, VI, Void, Premium,        |
-//|  Discount, OTE, EQ50, PDH, PDL, PWH, PWL, CRT Bull/Bear, KZ      |
-//+------------------------------------------------------------------+
-
-
-//+------------------------------------------------------------------+
-//| Helper Zone Structs                                              |
+//| Market Structure helper structs                                  |
 //+------------------------------------------------------------------+
 struct SSwingPoint
 {
-   int      barIndex;   // 0 = oldest in array, N-1 = newest closed bar
+   int      barIndex;
    datetime time;
    double   price;
    bool     isHigh;
@@ -1211,9 +1108,9 @@ struct SZoneBox
 {
    bool     active;
    bool     isBull;
-   bool     inverted;   // For FVG->IFVG or OB->Breaker
+   bool     inverted;
    int      formedIdx;
-   int      eventIdx;   // Bar where inversion/break occurred
+   int      eventIdx;
    double   high;
    double   low;
 };
@@ -1234,7 +1131,6 @@ private:
    double          m_eqTolerancePips;
    double          m_minFVGPips;
 
-   //--- KillZone config
    bool            m_useAsiaKZ;
    string          m_asiaWindow;
    bool            m_useLondonKZ;
@@ -1246,7 +1142,6 @@ private:
 
    SMarketContext  m_ctx;
 
-   //--- Parse "HH:MM-HH:MM" into minutes from midnight
    bool ParseWindow(const string spec, int &startMin, int &endMin) const
    {
       string parts[];
@@ -1278,7 +1173,6 @@ private:
 
       if(sMin <= eMin)
          return (nowMin >= sMin && nowMin < eMin);
-      //--- Overnight wrap (e.g., 22:00-02:00)
       return (nowMin >= sMin || nowMin < eMin);
    }
 
@@ -1317,7 +1211,6 @@ private:
       }
    }
 
-   //--- Detect fractal swings on chronological MqlRates[] (0 = oldest, count-1 = newest)
    void CollectSwings(const MqlRates &rates[],
                       const int count,
                       const int strength,
@@ -1425,16 +1318,11 @@ public:
       return m_ctx;
    }
 
-   //+----------------------------------------------------------------+
-   //| Full Market Structure & Institutional Context Update           |
-   //+----------------------------------------------------------------+
    bool Update(const CPipConverter &pipConv)
    {
       SMarketContext ctx;
       ctx.Reset();
 
-      //--- Copy closed bars chronologically (shift=1..m_lookbackBars)
-      //--- Note: ArraySetAsSeries(false) => index 0 = oldest, index count-1 = latest closed bar
       MqlRates rates[];
       ArraySetAsSeries(rates, false);
       int copied = CopyRates(m_symbol, m_tf, 1, m_lookbackBars, rates);
@@ -1454,7 +1342,6 @@ public:
       ctx.highPrice  = rates[lastIdx].high;
       ctx.lowPrice   = rates[lastIdx].low;
 
-      //--- Compute average candle body for displacement / Void detection
       double sumBody = 0.0;
       int bodyStart  = MathMax(0, copied - 40);
       for(int i = bodyStart; i < copied; i++)
@@ -1474,15 +1361,12 @@ public:
       bool   extHighBroken = false, extLowBroken = false;
       int    extTrend = 0;
 
-      //--- Track EQH / EQL pools
       double eqhPrice = 0.0; int eqhIdx = -1;
       double eqlPrice = 0.0; int eqlIdx = -1;
 
-      //--- Track Mitigation Block candidates (failed high/low prior to shift)
       double bullMBHigh = 0.0, bullMBLow = 0.0; bool bullMBValid = false;
       double bearMBHigh = 0.0, bearMBLow = 0.0; bool bearMBValid = false;
 
-      //--- Track Order Blocks & Breakers
       SZoneBox bullOB; ZeroMemory(bullOB);
       SZoneBox bearOB; ZeroMemory(bearOB);
 
@@ -1491,20 +1375,17 @@ public:
 
       for(int i = 0; i < copied; i++)
       {
-         //--- Register newly confirmed swings whose right wing completed at bar i
          while(swingCursor < nExtSwings && extSwings[swingCursor].barIndex + m_extStrength <= i)
          {
             SSwingPoint sp = extSwings[swingCursor];
             if(sp.isHigh)
             {
-               //--- EQH detection
                if(activeExtHigh > 0.0 && MathAbs(sp.price - activeExtHigh) <= eqTolPx)
                {
                   ctx.eqhDetected = true;
                   eqhPrice = MathMax(sp.price, activeExtHigh);
                   eqhIdx   = sp.barIndex;
                }
-               //--- Lower High in uptrend -> Bearish Mitigation Block candidate
                if(extTrend == 1 && activeExtHigh > 0.0 && sp.price < activeExtHigh)
                {
                   bearMBHigh  = rates[sp.barIndex].high;
@@ -1518,14 +1399,12 @@ public:
             }
             else
             {
-               //--- EQL detection
                if(activeExtLow > 0.0 && MathAbs(sp.price - activeExtLow) <= eqTolPx)
                {
                   ctx.eqlDetected = true;
                   eqlPrice = MathMin(sp.price, activeExtLow);
                   eqlIdx   = sp.barIndex;
                }
-               //--- Higher Low in downtrend -> Bullish Mitigation Block candidate
                if(extTrend == -1 && activeExtLow > 0.0 && sp.price > activeExtLow)
                {
                   bullMBHigh  = rates[sp.barIndex].high;
@@ -1540,7 +1419,6 @@ public:
             swingCursor++;
          }
 
-         //--- Check xBSL Sweep (wick pierces active external high, closes back below)
          if(activeExtHigh > 0.0 && rates[i].high > activeExtHigh && rates[i].close < activeExtHigh)
          {
             if(i >= recentCutoff)
@@ -1549,7 +1427,6 @@ public:
                ctx.sweepBear = true;
             }
          }
-         //--- Check xSSL Sweep (wick pierces active external low, closes back above)
          if(activeExtLow > 0.0 && rates[i].low < activeExtLow && rates[i].close > activeExtLow)
          {
             if(i >= recentCutoff)
@@ -1559,7 +1436,6 @@ public:
             }
          }
 
-         //--- Check EQH / EQL Sweeps
          if(eqhPrice > 0.0 && i > eqhIdx && rates[i].high > eqhPrice && rates[i].close < eqhPrice)
          {
             if(i >= recentCutoff)
@@ -1579,7 +1455,6 @@ public:
             }
          }
 
-         //--- Check External BOS / CHoCH Bullish (close > activeExtHigh)
          if(activeExtHigh > 0.0 && !extHighBroken && rates[i].close > activeExtHigh)
          {
             extHighBroken = true;
@@ -1592,7 +1467,6 @@ public:
                else        ctx.bosBull   = true;
             }
 
-            //--- Find last bearish candle before impulse -> Bullish OB
             for(int k = i - 1; k >= MathMax(0, i - 15); k--)
             {
                if(rates[k].close < rates[k].open)
@@ -1608,7 +1482,6 @@ public:
             }
          }
 
-         //--- Check External BOS / CHoCH Bearish (close < activeExtLow)
          if(activeExtLow > 0.0 && !extLowBroken && rates[i].close < activeExtLow)
          {
             extLowBroken = true;
@@ -1621,7 +1494,6 @@ public:
                else        ctx.bosBear   = true;
             }
 
-            //--- Find last bullish candle before impulse -> Bearish OB
             for(int k = i - 1; k >= MathMax(0, i - 15); k--)
             {
                if(rates[k].close > rates[k].open)
@@ -1637,7 +1509,6 @@ public:
             }
          }
 
-         //--- OB Mitigation / Breaker Conversion
          if(bullOB.active && i > bullOB.formedIdx && rates[i].close < bullOB.low)
          {
             bullOB.active   = false;
@@ -1660,7 +1531,6 @@ public:
       ctx.lastExtHigh = activeExtHigh;
       ctx.lastExtLow  = activeExtLow;
 
-      //--- Final OB validity & price reaction check
       if(bullOB.active)
       {
          ctx.bullOBValid = true;
@@ -1678,13 +1548,11 @@ public:
             ctx.atBearOB = true;
       }
 
-      //--- Active Breaker retest/freshness
       if(bullOB.inverted && (lastIdx - bullOB.eventIdx <= m_signalWindowBars * 2))
          ctx.bearBreakerActive = true;
       if(bearOB.inverted && (lastIdx - bearOB.eventIdx <= m_signalWindowBars * 2))
          ctx.bullBreakerActive = true;
 
-      //--- Mitigation Block activation when price retests MB after opposite structure shift
       if(bullMBValid && (ctx.chochBull || ctx.bosBull) && rates[lastIdx].low <= bullMBHigh && rates[lastIdx].close >= bullMBLow)
          ctx.bullMB = true;
       if(bearMBValid && (ctx.chochBear || ctx.bosBear) && rates[lastIdx].high >= bearMBLow && rates[lastIdx].close <= bearMBHigh)
@@ -1719,8 +1587,6 @@ public:
             intCursor++;
          }
 
-         //--- IDM Sweep Detection (Inducement Sweep = Tier 1 Signal!)
-         //--- Buy-side internal inducement swept & rejected downward -> Bearish reversal catalyst
          if(activeIntHigh > 0.0 && rates[i].high > activeIntHigh && rates[i].close < activeIntHigh)
          {
             if(i >= recentCutoff)
@@ -1729,7 +1595,6 @@ public:
                ctx.sweepBear    = true;
             }
          }
-         //--- Sell-side internal inducement swept & rejected upward -> Bullish reversal catalyst
          if(activeIntLow > 0.0 && rates[i].low < activeIntLow && rates[i].close > activeIntLow)
          {
             if(i >= recentCutoff)
@@ -1739,7 +1604,6 @@ public:
             }
          }
 
-         //--- Internal BOS / iCHoCH
          if(activeIntHigh > 0.0 && !intHighBroken && rates[i].close > activeIntHigh)
          {
             intHighBroken = true;
@@ -1764,9 +1628,6 @@ public:
          }
       }
 
-      //--- Classic SMC trend-relative IDM sweep:
-      //--- In bullish trend, breaking/sweeping the nearest internal pullback low (IDM) while price
-      //--- rejects from highs adds bearish IDM confirmation; vice versa for bearish trend.
       if(extTrend == 1 && activeIntLow > 0.0 && (ctx.xBSL || ctx.chochBear || ctx.ichochBear))
       {
          for(int i = recentCutoff; i <= lastIdx; i++)
@@ -1804,7 +1665,6 @@ public:
 
       for(int i = 2; i < copied; i++)
       {
-         //--- Bullish FVG: Low[i] > High[i-2]
          if(rates[i].low - rates[i - 2].high >= minFVGPx)
          {
             int sz = ArraySize(fvgs);
@@ -1817,7 +1677,6 @@ public:
             fvgs[sz].high      = rates[i].low;
             fvgs[sz].low       = rates[i - 2].high;
          }
-         //--- Bearish FVG: High[i] < Low[i-2]
          else if(rates[i - 2].low - rates[i].high >= minFVGPx)
          {
             int sz = ArraySize(fvgs);
@@ -1831,7 +1690,6 @@ public:
             fvgs[sz].low       = rates[i].high;
          }
 
-         //--- Update existing FVGs for mitigation or inversion (IFVG)
          int nF = ArraySize(fvgs);
          for(int f = 0; f < nF; f++)
          {
@@ -1840,7 +1698,6 @@ public:
 
             if(fvgs[f].isBull && rates[i].close < fvgs[f].low)
             {
-               //--- Bullish FVG decisively broken downward -> Bearish IFVG
                fvgs[f].active   = false;
                fvgs[f].inverted = true;
                fvgs[f].eventIdx = i;
@@ -1849,7 +1706,6 @@ public:
             }
             else if(!fvgs[f].isBull && rates[i].close > fvgs[f].high)
             {
-               //--- Bearish FVG decisively broken upward -> Bullish IFVG
                fvgs[f].active   = false;
                fvgs[f].inverted = true;
                fvgs[f].eventIdx = i;
@@ -1859,7 +1715,6 @@ public:
          }
       }
 
-      //--- Record newest still-valid Bullish and Bearish FVG
       for(int f = ArraySize(fvgs) - 1; f >= 0; f--)
       {
          if(fvgs[f].active && fvgs[f].isBull && !ctx.bullFVGValid)
@@ -1894,7 +1749,6 @@ public:
          if(prevBodyBot - curBodyTop >= viMinGap && rates[i].close < rates[i].open)
             ctx.bearVI = true;
 
-         //--- Liquidity Void: 2 consecutive large bodies >= 1.5x avgBody
          double bCur  = MathAbs(rates[i].close - rates[i].open);
          double bPrev = MathAbs(rates[i - 1].close - rates[i - 1].open);
          if(bCur >= avgBody * 1.5 && bPrev >= avgBody * 1.5)
@@ -1907,7 +1761,7 @@ public:
       }
 
       //================================================================
-      // 5. DEALING RANGE: PREMIUM, DISCOUNT, EQ50, OTE (61.8% - 78.6%)
+      // 5. DEALING RANGE: PREMIUM, DISCOUNT, EQ50, OTE
       //================================================================
       double rHigh = activeExtHigh;
       double rLow  = activeExtLow;
@@ -1931,12 +1785,10 @@ public:
          ctx.inPremium  = (refPrice > ctx.eq50);
          ctx.inDiscount = (refPrice <= ctx.eq50);
 
-         //--- Bullish OTE: 61.8% - 78.6% retracement down from High (0.214 .. 0.382 of range)
          double bullOTETop = rHigh - span * 0.618;
          double bullOTEBot = rHigh - span * 0.786;
          ctx.inBullOTE     = (refPrice >= bullOTEBot && refPrice <= bullOTETop);
 
-         //--- Bearish OTE: 61.8% - 78.6% retracement up from Low (0.618 .. 0.786 of range)
          double bearOTEBot = rLow + span * 0.618;
          double bearOTETop = rLow + span * 0.786;
          ctx.inBearOTE     = (refPrice >= bearOTEBot && refPrice <= bearOTETop);
@@ -1992,7 +1844,7 @@ public:
       }
 
       //================================================================
-      // 7. CRT (CANDLE RANGE THEORY): CRT BULL & CRT BEAR REVERSAL
+      // 7. CRT (CANDLE RANGE THEORY)
       //================================================================
       MqlRates crtRates[];
       ArraySetAsSeries(crtRates, true);
@@ -2003,11 +1855,9 @@ public:
 
          for(int i = recentCutoff; i <= lastIdx; i++)
          {
-            //--- CRT Bull: wick swept below HTF CRT Low & closed back inside range
             if(rates[i].low < ctx.crtRefLow && rates[i].close > ctx.crtRefLow && rates[i].close < ctx.crtRefHigh)
                ctx.crtBull = true;
 
-            //--- CRT Bear: wick swept above HTF CRT High & closed back inside range
             if(rates[i].high > ctx.crtRefHigh && rates[i].close < ctx.crtRefHigh && rates[i].close > ctx.crtRefLow)
                ctx.crtBear = true;
          }
@@ -2022,9 +1872,6 @@ public:
       return true;
    }
 
-   //+----------------------------------------------------------------+
-   //| Ultra-fast intrabar refresh for live price & KillZone state    |
-   //+----------------------------------------------------------------+
    void UpdateLiveState(const CPipConverter &pipConv)
    {
       double bid = SymbolInfoDouble(m_symbol, SYMBOL_BID);
@@ -2054,19 +1901,10 @@ public:
    }
 };
 
-
-//+------------------------------------------------------------------+
-//|                                            GT_InternalSignal.mqh |
-//|     GT Recovery Engine - All-in-One Internal ICT+SMC+CRT Engine  |
-//|  Generates Buy/Sell, Structural SL/TP & Bias without external    |
-//|  indicator files (100% standalone 1-file .ex5 backtest ready)    |
-//+------------------------------------------------------------------+
-
-
 #define GT_VIS_PREFIX "GTRE_VIS_"
 
 //+------------------------------------------------------------------+
-//| CInternalSignalEngine                                            |
+//| CInternalSignalEngine (All-in-One ICT+SMC+CRT)                   |
 //+------------------------------------------------------------------+
 class CInternalSignalEngine
 {
@@ -2135,31 +1973,24 @@ private:
       ObjectSetString(0, name, OBJPROP_TOOLTIP, tooltip);
    }
 
-   //+----------------------------------------------------------------+
-   //| Determine Market Bias (+1 Bullish, -1 Bearish, 0 Neutral)      |
-   //+----------------------------------------------------------------+
    ENUM_GT_BIAS DetermineBias(const SMarketContext &ctx) const
    {
       int bullVotes = 0;
       int bearVotes = 0;
 
-      //--- Primary external market structure
       if(ctx.extTrend ==  1) bullVotes += 3;
       if(ctx.extTrend == -1) bearVotes += 3;
 
-      //--- External structural shifts override stale trend rapidly
       if(ctx.chochBull) bullVotes += 4;
       if(ctx.chochBear) bearVotes += 4;
       if(ctx.bosBull)   bullVotes += 2;
       if(ctx.bosBear)   bearVotes += 2;
 
-      //--- Internal structure alignment
       if(ctx.intTrend ==  1) bullVotes += 1;
       if(ctx.intTrend == -1) bearVotes += 1;
       if(ctx.ichochBull)     bullVotes += 2;
       if(ctx.ichochBear)     bearVotes += 2;
 
-      //--- Strong Institutional Reversal Liquidity / CRT Confluence
       if(ctx.crtBull && (ctx.xSSL || ctx.idmSweptBull)) bullVotes += 3;
       if(ctx.crtBear && (ctx.xBSL || ctx.idmSweptBear)) bearVotes += 3;
       if(ctx.bullIFVG) bullVotes += 1;
@@ -2170,9 +2001,6 @@ private:
       return GT_BIAS_NEUTRAL;
    }
 
-   //+----------------------------------------------------------------+
-   //| Compute Structural SL & TP for Buy / Sell                      |
-   //+----------------------------------------------------------------+
    void ComputeStructuralSLTP(const bool isBuy,
                               const double refEntry,
                               const MqlRates &sigBar,
@@ -2192,7 +2020,6 @@ private:
 
       if(isBuy)
       {
-         //--- Anchor SL below nearest structural low (signal bar low, Bull OB low, or internal low)
          double structLow = sigBar.low;
          if(ctx.bullOBValid && ctx.bullOBLow > 0.0 && ctx.bullOBLow < refEntry)
             structLow = MathMin(structLow, ctx.bullOBLow);
@@ -2215,7 +2042,6 @@ private:
       }
       else
       {
-         //--- Anchor SL above nearest structural high (signal bar high, Bear OB high, or internal high)
          double structHigh = sigBar.high;
          if(ctx.bearOBValid && ctx.bearOBHigh > refEntry)
             structHigh = MathMax(structHigh, ctx.bearOBHigh);
@@ -2296,9 +2122,6 @@ public:
       DrawHLine(GT_VIS_PREFIX + "CRT_L", ctx.crtRefLow,  C'52,211,153',  STYLE_DASH, "GT CRT Ref Low");
    }
 
-   //+----------------------------------------------------------------+
-   //| Generate Complete ICT+SMC+CRT Signal Package (Buffers 0..6)    |
-   //+----------------------------------------------------------------+
    bool Evaluate(const SMarketContext &ctx,
                  const CPipConverter &pipConv,
                  SIndicatorData &outData)
@@ -2313,7 +2136,6 @@ public:
 
       MqlRates sigBar = barArr[0];
 
-      //--- Return cached bar evaluation if already computed on this bar (non-repainting)
       if(m_signalShift > 0 && sigBar.time == m_lastEvaluatedBar && m_cachedData.valid)
       {
          outData = m_cachedData;
@@ -2324,14 +2146,12 @@ public:
       outData.valid   = true;
       outData.barTime = sigBar.time;
 
-      //--- 1. Compute Bias (+1 / -1 / 0)
       ENUM_GT_BIAS curBias      = DetermineBias(ctx);
       outData.bias              = curBias;
       outData.prevBias          = m_prevBias;
       outData.biasChangedToBull = (curBias == GT_BIAS_BULLISH && m_prevBias != GT_BIAS_BULLISH);
       outData.biasChangedToBear = (curBias == GT_BIAS_BEARISH && m_prevBias != GT_BIAS_BEARISH);
 
-      //--- 2. Candle price-action rejection / displacement confirmation
       double range     = MathMax(pipConv.PointSize(), sigBar.high - sigBar.low);
       double lowerWick = MathMin(sigBar.open, sigBar.close) - sigBar.low;
       double upperWick = sigBar.high - MathMax(sigBar.open, sigBar.close);
@@ -2341,7 +2161,6 @@ public:
       bool bearCandleConfirm = (sigBar.close < sigBar.open) ||
                                (upperWick >= range * 0.45 && sigBar.close <= sigBar.high - range * 0.50);
 
-      //--- 3. Institutional Bullish Entry Confluence Score
       int    bullScore    = 0;
       bool   bullCatalyst = false;
       bool   bullZoneOK   = false;
@@ -2368,7 +2187,6 @@ public:
       if(ctx.bullMB || ctx.bullVI || ctx.bullVoid){ bullScore += 1; bullZoneOK = true;  }
       if(ctx.inKillZone)                         { bullScore += 1; AppendToken(bullReason, "KZ"); }
 
-      //--- 4. Institutional Bearish Entry Confluence Score
       int    bearScore    = 0;
       bool   bearCatalyst = false;
       bool   bearZoneOK   = false;
@@ -2395,7 +2213,6 @@ public:
       if(ctx.bearMB || ctx.bearVI || ctx.bearVoid){ bearScore += 1; bearZoneOK = true;  }
       if(ctx.inKillZone)                         { bearScore += 1; AppendToken(bearReason, "KZ"); }
 
-      //--- 5. Apply Entry Sensitivity Rules
       bool buyTrigger  = false;
       bool sellTrigger = false;
 
@@ -2423,7 +2240,6 @@ public:
             sellTrigger = (bearScore >= minReqScore);
       }
 
-      //--- 6. Populate Virtual Buffers 0..5
       double ask = SymbolInfoDouble(m_symbol, SYMBOL_ASK);
       double bid = SymbolInfoDouble(m_symbol, SYMBOL_BID);
       if(ask <= 0.0) ask = sigBar.close;
@@ -2473,15 +2289,6 @@ public:
       return true;
    }
 };
-
-
-//+------------------------------------------------------------------+
-//|                                           GT_IndicatorBridge.mqh |
-//|           GT Recovery Engine - Unified ICT_SMC_CRT Signal Bridge |
-//|  Mode 1 (Default): All-in-One Internal ICT+SMC+CRT Engine        |
-//|  Mode 2 (Optional): External ICT_SMC_CRT via iCustom+CopyBuffer  |
-//+------------------------------------------------------------------+
-
 
 //--- Buffer index definitions (ICT_SMC_CRT contract)
 #define GT_BUF_BUY_SIGNAL   0
@@ -2575,7 +2382,6 @@ public:
       m_lastError   = "";
       m_lastData.Reset();
 
-      //--- Mode 1: All-in-One Internal Engine (1-file standalone EA)
       if(m_sourceMode == GT_SRC_INTERNAL_ALL_IN_ONE)
       {
          m_internal.Init(m_symbol, m_timeframe, m_signalShift,
@@ -2586,7 +2392,6 @@ public:
          return true;
       }
 
-      //--- Mode 2: External Indicator via iCustom + CopyBuffer
       ResetLastError();
       m_handle = iCustom(m_symbol, m_timeframe, m_indName);
       if(m_handle == INVALID_HANDLE)
@@ -2629,14 +2434,10 @@ public:
    string         LastError()   const { return m_lastError; }
    SIndicatorData GetLastData() const { return m_lastData; }
 
-   //+----------------------------------------------------------------+
-   //| Refresh Signals (Internal All-in-One OR External CopyBuffer)   |
-   //+----------------------------------------------------------------+
    bool Refresh(const SMarketContext &ctx,
                 const CPipConverter &pipConv,
                 SIndicatorData &outData)
    {
-      //--- Mode 1: All-in-One Internal ICT + SMC + CRT
       if(m_sourceMode == GT_SRC_INTERNAL_ALL_IN_ONE)
       {
          bool ok = m_internal.Evaluate(ctx, pipConv, outData);
@@ -2645,7 +2446,6 @@ public:
          return ok;
       }
 
-      //--- Mode 2: External ICT_SMC_CRT via CopyBuffer (Buffers 0..6)
       outData.Reset();
 
       if(m_handle == INVALID_HANDLE)
@@ -2710,9 +2510,6 @@ public:
       return true;
    }
 
-   //+----------------------------------------------------------------+
-   //| Entry Validation Helpers (Primary Entry Engine Contract)       |
-   //+----------------------------------------------------------------+
    bool IsValidBuyEntry(const SIndicatorData &data) const
    {
       if(!data.valid) return false;
@@ -2725,14 +2522,6 @@ public:
       return (data.sellSignal && data.bias == GT_BIAS_BEARISH && !data.buySignal);
    }
 };
-
-
-//+------------------------------------------------------------------+
-//|                                         GT_ProbabilityEngine.mqh |
-//|           GT Recovery Engine - Probability & Scoring Engine      |
-//|     Selects Martingale Klasik vs Flip Martingale by Probability  |
-//+------------------------------------------------------------------+
-
 
 //+------------------------------------------------------------------+
 //| CProbabilityEngine                                               |
@@ -2769,11 +2558,6 @@ public:
       return m_lastDecision;
    }
 
-   //+----------------------------------------------------------------+
-   //| Evaluate Market Probability for a Position Direction in Loss   |
-   //| NOTE: Loss NEVER dictates Classic/Flip; it only triggers this  |
-   //|       structural probability re-evaluation.                    |
-   //+----------------------------------------------------------------+
    SProbabilityDecision Evaluate(const ENUM_GT_DIR currentDir,
                                  const SMarketContext &ctx,
                                  const SIndicatorData &ind)
@@ -2791,13 +2575,6 @@ public:
 
       bool isBuyPos = (currentDir == GT_DIR_BUY);
 
-      //================================================================
-      // MAP DIRECTIONAL REVERSAL vs CONTINUATION SIGNALS
-      // If holding BUY  -> Reversal = BEARISH, Continuation = BULLISH
-      // If holding SELL -> Reversal = BULLISH, Continuation = BEARISH
-      //================================================================
-
-      //--- Reversal Signals (Opposing Direction)
       bool revIDM        = isBuyPos ? ctx.idmSweptBear      : ctx.idmSweptBull;
       bool revExtLiq     = isBuyPos ? ctx.xBSL              : ctx.xSSL;
       string extLiqLabel = isBuyPos ? "xBSL"                : "xSSL";
@@ -2824,7 +2601,6 @@ public:
       bool revHTFLiq     = isBuyPos ? (ctx.pdhSweptBear || ctx.pwhSweptBear)
                                     : (ctx.pdlSweptBull || ctx.pwlSweptBull);
 
-      //--- ICT_SMC_CRT Primary Indicator Reversal Evidence (Bias Flip or Opposite Signal)
       bool revIndBias    = false;
       if(ind.valid)
       {
@@ -2832,7 +2608,6 @@ public:
          if(!isBuyPos && (ind.bias == GT_BIAS_BULLISH || ind.buySignal))  revIndBias = true;
       }
 
-      //--- Continuation Signals (Same Direction - Classic Martingale)
       bool noOppCHoCH    = !revCHoCH;
       bool noOppBOS      = !revBOS;
       bool contZoneFav   = isBuyPos ? ctx.inDiscount        : ctx.inPremium;
@@ -2848,23 +2623,17 @@ public:
 
       dec.structureIntact = (noOppCHoCH && noOppBOS);
 
-      //================================================================
-      // 1. EVALUATE FLIP HIERARCHY (TIER 1 / TIER 2 / TIER 3)
-      //================================================================
       int t1 = 0, t2 = 0, t3 = 0;
 
-      //--- Tier 1 (Sangat Kuat): IDM Sweep, xSSL, xBSL, CHoCH, CRT Reverse
       if(revIDM)    t1++;
       if(revExtLiq) t1++;
       if(revCHoCH)  t1++;
       if(revCRT)    t1++;
 
-      //--- Tier 2 (Kuat): (xSSL + CHoCH) / (xBSL + CHoCH), IFVG
       bool tier2ComboLiqChoch = (revExtLiq && revCHoCH);
       if(tier2ComboLiqChoch) t2++;
       if(revIFVG)            t2++;
 
-      //--- Tier 3 (Sedang): BOS, iBOS, iCHoCH
       if(revBOS)    t3++;
       if(revIBOS)   t3++;
       if(revICHoCH) t3++;
@@ -2878,9 +2647,6 @@ public:
       else if(t3 > 0) dec.highestTier = GT_TIER_3;
       else            dec.highestTier = GT_TIER_NONE;
 
-      //================================================================
-      // 2. COMPUTE REVERSAL PROBABILITY SCORE
-      //================================================================
       int revScore = 0;
       string revList = "";
 
@@ -2945,7 +2711,6 @@ public:
          AppendFactor(revList, StringFormat("%s(+%d)", revZoneLbl, wRevZone));
       }
 
-      //--- Supporting Institutional Context Weights
       if(revSweep && !revExtLiq && !revIDM && m_weights.wSweep > 0)
       {
          revScore += m_weights.wSweep;
@@ -2985,9 +2750,6 @@ public:
       dec.reversalScore         = revScore;
       dec.activeReversalFactors = (revList == "") ? "Tidak ada sinyal reversal" : revList;
 
-      //================================================================
-      // 3. COMPUTE CONTINUATION SCORE (MARTINGALE KLASIK EVIDENCE)
-      //================================================================
       int contScore = 0;
       string contList = "";
 
@@ -3002,22 +2764,14 @@ public:
       dec.continuationScore         = contScore;
       dec.activeContinuationFactors = (contList == "") ? "Struktur lemah" : contList;
 
-      //================================================================
-      // 4. RECOVERY ENGINE SELECTION (CLASSIC vs FLIP)
-      //================================================================
       bool flipActivated = false;
 
       if(m_weights.enabled)
       {
-         //--- Scoring Mode:
-         //--- "Jika total skor reversal melebihi ambang batas yang ditentukan pengguna:
-         //---  Flip Martingale aktif. Jika tidak: Martingale Klasik aktif."
          flipActivated = (dec.reversalScore > m_weights.flipThreshold);
       }
       else
       {
-         //--- Rule-Based Hierarchy Mode (when scoring toggle is OFF):
-         //--- Flip triggers on high-probability Tier 1/2 institutional reversal confluence
          if(tier2ComboLiqChoch)
             flipActivated = true;
          else if(revIDM && (revExtLiq || revCHoCH || revCRT || revIFVG || revIndBias))
@@ -3069,16 +2823,8 @@ public:
    }
 };
 
-
 //+------------------------------------------------------------------+
-//|                                             GT_SafetyManager.mqh |
-//|                     GT Recovery Engine - Safety & Risk Shield    |
-//|  Max Level, Max Floating Loss, Daily DD, Max Pos, Emergency Stop |
-//+------------------------------------------------------------------+
-
-
-//+------------------------------------------------------------------+
-//| CSafetyManager                                                   |
+//| CSafetyManager  (v1.32: Daily DD Resume-On-Signal)               |
 //+------------------------------------------------------------------+
 class CSafetyManager
 {
@@ -3100,6 +2846,11 @@ private:
    double            m_dayStartBalance;
    bool              m_dailyDDLatched;
    string            m_lastAlertedReason;
+
+   //--- v1.32: Resume DD saat sinyal berikutnya
+   bool              m_ddResumeOnSignal;
+   int               m_maxDDRearmPerDay;   // 0 = tanpa batas
+   int               m_ddRearmCountToday;
 
    SSafetyStatus     m_status;
 
@@ -3143,6 +2894,9 @@ public:
       m_dayStartBalance     = 0.0;
       m_dailyDDLatched      = false;
       m_lastAlertedReason   = "";
+      m_ddResumeOnSignal    = true;
+      m_maxDDRearmPerDay    = 0;
+      m_ddRearmCountToday   = 0;
       m_status.Reset();
    }
 
@@ -3170,11 +2924,19 @@ public:
       m_alertsEnabled       = alertsEnabled;
       m_dailyDDLatched      = false;
       m_lastAlertedReason   = "";
+      m_ddRearmCountToday   = 0;
 
       m_currentDay      = GetDayFloor(TimeCurrent());
       m_dayStartBalance = AccountInfoDouble(ACCOUNT_BALANCE);
       m_status.Reset();
       m_status.dayStartBalance = m_dayStartBalance;
+   }
+
+   //--- v1.32: konfigurasi mode resume DD
+   void ConfigureDDResume(const bool resumeOnSignal, const int maxRearmPerDay)
+   {
+      m_ddResumeOnSignal = resumeOnSignal;
+      m_maxDDRearmPerDay = MathMax(0, maxRearmPerDay);
    }
 
    void TriggerManualEmergency(const bool active)
@@ -3184,16 +2946,39 @@ public:
       {
          m_dailyDDLatched    = false;
          m_lastAlertedReason = "";
+         //--- Rebase baseline DD ke equity saat resume manual (agar latch tidak langsung terpasang lagi)
+         m_dayStartBalance   = AccountInfoDouble(ACCOUNT_EQUITY);
       }
    }
 
    bool IsManualEmergencyActive() const { return m_emergencyManual; }
    bool ShouldCloseAllOnEmergency() const { return m_closeAllOnEmergency; }
    SSafetyStatus GetStatus() const { return m_status; }
+   int  MaxLevel() const { return m_maxLevel; }
+   bool IsDDResumeOnSignal() const { return m_ddResumeOnSignal; }
 
-   //+----------------------------------------------------------------+
-   //| Refresh safety checks on every tick / evaluation               |
-   //+----------------------------------------------------------------+
+   //--- v1.32: apakah DD saat ini boleh di-rearm oleh sinyal baru
+   bool CanRearmAfterDD() const
+   {
+      if(!m_ddResumeOnSignal)                 return false;
+      if(!m_dailyDDLatched)                   return false;
+      if(m_emergencyInput || m_emergencyManual) return false;
+      if(m_maxDDRearmPerDay > 0 && m_ddRearmCountToday >= m_maxDDRearmPerDay)
+         return false;
+      return true;
+   }
+
+   //--- v1.32: buka kunci DD & mulai baseline DD baru dari equity saat ini
+   void RearmAfterDD()
+   {
+      m_ddRearmCountToday++;
+      m_dailyDDLatched    = false;
+      m_dayStartBalance   = AccountInfoDouble(ACCOUNT_EQUITY);
+      m_lastAlertedReason = "";
+      PrintFormat("[GT Recovery Engine] DD RE-ARM #%d: baseline DD baru = %.2f (Equity). Entry dibuka lagi pada sinyal baru.",
+                  m_ddRearmCountToday, m_dayStartBalance);
+   }
+
    void Update(const int currentRecoveryLevel,
                const int openPosCount,
                const double symbolFloatingPL,
@@ -3206,6 +2991,7 @@ public:
          m_dayStartBalance   = AccountInfoDouble(ACCOUNT_BALANCE);
          m_dailyDDLatched    = false;
          m_lastAlertedReason = "";
+         m_ddRearmCountToday = 0;
       }
 
       double balance = AccountInfoDouble(ACCOUNT_BALANCE);
@@ -3222,15 +3008,12 @@ public:
       m_status.currentFloatingPL    = symbolFloatingPL;
       m_status.currentOpenPositions = openPosCount;
 
-      //--- 1. Emergency Stop
       m_status.emergencyActive = (m_emergencyInput || m_emergencyManual);
 
-      //--- 2. Max Daily Drawdown
       if(m_maxDailyDDPct > 0.0 && dailyDDPct >= m_maxDailyDDPct)
          m_dailyDDLatched = true;
       m_status.maxDailyDDHit = m_dailyDDLatched;
 
-      //--- 3. Max Floating Loss (symbol EA positions)
       m_status.maxFloatingLossHit = false;
       if(m_maxFloatingLoss > 0.0 && symbolFloatingPL < 0.0)
       {
@@ -3248,13 +3031,9 @@ public:
          }
       }
 
-      //--- 4. Max Martingale Level
       m_status.maxLevelReached = (currentRecoveryLevel >= m_maxLevel);
-
-      //--- 5. Max Open Positions
       m_status.maxPositionsHit = (openPosCount >= m_maxOpenPositions);
 
-      //--- Aggregate Halt Decision
       m_status.tradingHalted = false;
       m_status.haltReason    = "SAFE";
 
@@ -3267,8 +3046,9 @@ public:
       else if(m_status.maxDailyDDHit)
       {
          m_status.tradingHalted = true;
-         m_status.haltReason    = StringFormat("MAX DAILY DRAWDOWN TERCAPAI (%.2f%% >= %.2f%%)",
-                                               dailyDDPct, m_maxDailyDDPct);
+         m_status.haltReason    = StringFormat("MAX DAILY DD (%.2f%% >= %.2f%%)%s",
+                                               dailyDDPct, m_maxDailyDDPct,
+                                               CanRearmAfterDD() ? " | tunggu sinyal baru" : "");
          NotifyBreach(m_status.haltReason);
       }
       else if(m_status.maxFloatingLossHit)
@@ -3312,20 +3092,11 @@ public:
       if(m_status.maxDailyDDHit)      return false;
       if(m_status.maxFloatingLossHit) return false;
       if(nextLevel > m_maxLevel)      return false;
-      //--- Classic adds a position, so check Max Open Positions; Flip closes old ones first
       if(!isFlipCloseFirst && m_status.maxPositionsHit)
          return false;
       return true;
    }
 };
-
-
-//+------------------------------------------------------------------+
-//|                                            GT_RecoveryEngine.mqh |
-//|     GT Recovery Engine - Entry + Classic & Flip Recovery Core    |
-//|   Executes ICT_SMC_CRT entries & probability-driven recovery     |
-//+------------------------------------------------------------------+
-
 
 //+------------------------------------------------------------------+
 //| CRecoveryEngine                                                  |
@@ -3339,7 +3110,6 @@ private:
    long                    m_magic;
    int                     m_slippagePts;
 
-   //--- Order & Recovery Parameters
    double                  m_initialLot;
    double                  m_multiplier;
    double                  m_gridStepPips;
@@ -3360,7 +3130,10 @@ private:
    bool                    m_flipAutoCoverLossTP;
    bool                    m_alertsEnabled;
 
-   //--- Runtime State
+   //--- v1.32
+   bool                    m_abandonStuckCycle;
+   datetime                m_ddHaltBar;
+
    SRecoveryState          m_state;
    datetime                m_lastEntrySignalBar;
    string                  m_lastRuntimeWarning;
@@ -3383,9 +3156,6 @@ private:
       Print("[GT Recovery Engine] ", msg);
    }
 
-   //+----------------------------------------------------------------+
-   //| Resolve SL & TP Prices with Exact Precision RR Lock            |
-   //+----------------------------------------------------------------+
    bool ResolveOrderSLTP(const ENUM_GT_DIR dir,
                          const double entryPrice,
                          const double orderLot,
@@ -3412,7 +3182,6 @@ private:
 
       if(m_sltpMode == GT_SLTP_INDICATOR)
       {
-         //--- Flip recovery orders must NEVER read stale Level-0 indicator SL/TP buffers
          double rawSL = (!isFlipRecovery) ? (isBuy ? ind.buySL : ind.sellSL) : 0.0;
          double rawTP = (!isFlipRecovery) ? (isBuy ? ind.buyTP : ind.sellTP) : 0.0;
 
@@ -3426,7 +3195,6 @@ private:
 
          if(m_enforceExactRR && slDistPx > 0.0 && targetRR > 0.0)
          {
-            //--- Lock exact RR from live entryPrice (and preserve exact RR if Grid Step raises floor)
             if(slDistPx < minStopPx)
                slDistPx = minStopPx;
             double minSLForGridPx = gridStepPx / targetRR;
@@ -3451,9 +3219,8 @@ private:
          slDistPx = pipConv.NormalizePrice(pipConv.PipsToPrice(m_fixedSLPips));
          tpDistPx = pipConv.NormalizePrice(pipConv.PipsToPrice(m_fixedTPPips));
       }
-      else // GT_SLTP_RISK_REWARD
+      else
       {
-         //--- Exact RR formula: TP = SL * RR (1:1, 1:2, 1:3, Custom)
          double slPips = m_fixedSLPips;
          if(slPips <= 0.0 && !isFlipRecovery && ind.valid)
          {
@@ -3472,7 +3239,6 @@ private:
          tpDistPx = pipConv.NormalizePrice(slDistPx * targetRR);
       }
 
-      //--- Optional Flip Martingale Auto-Cover Loss TP (Off by default so exact 1:2 RR stays intact)
       if(isFlipRecovery && m_flipAutoCoverLossTP && m_state.realizedCyclePL < 0.0 && orderLot > 0.0)
       {
          double pipValOrder = pipConv.GetPipValuePerLot() * orderLot;
@@ -3485,7 +3251,6 @@ private:
          }
       }
 
-      //--- Runtime Validation of TP vs Grid Step & RR consistency
       double slPipsActual = pipConv.PriceToPips(slDistPx);
       double tpPipsActual = pipConv.PriceToPips(tpDistPx);
 
@@ -3517,7 +3282,6 @@ private:
          }
       }
 
-      //--- Enforce broker StopsLevel safely while keeping exact RR
       if(slDistPx > 0.0 && slDistPx < minStopPx)
       {
          slDistPx = pipConv.NormalizePrice(minStopPx);
@@ -3538,9 +3302,6 @@ private:
       return true;
    }
 
-   //+----------------------------------------------------------------+
-   //| Execute Market Order + Post-Fill Exact Slippage Re-Anchor      |
-   //+----------------------------------------------------------------+
    bool SendMarketOrder(const ENUM_GT_DIR dir,
                         const double rawLot,
                         const bool   isFlipRecovery,
@@ -3581,9 +3342,7 @@ private:
          return false;
       }
 
-      //--- Post-Fill Exact SL/TP Re-Anchor:
-      //--- Jika terjadi slippage saat eksekusi market order, geser SL/TP persis dari Open Price aktual
-      //--- agar rasio SL:TP (mis. 1:2.00) tetap 100% presisi sampai tick terakhir!
+      //--- Post-Fill Exact SL/TP Re-Anchor (RR 1:2 tetap presisi walau ada slippage)
       executedPrice = (m_trade.ResultPrice() > 0.0) ? m_trade.ResultPrice() : entryPrice;
       double finalSL = sl;
       double finalTP = tp;
@@ -3648,9 +3407,6 @@ private:
       return true;
    }
 
-   //+----------------------------------------------------------------+
-   //| Align Unified Basket TP for Classic Martingale Grid            |
-   //+----------------------------------------------------------------+
    void AlignClassicBasketTP(const ENUM_GT_DIR dir, const CPipConverter &pipConv)
    {
       if(m_classicTPMode != GT_CLASSIC_TP_BASKET)
@@ -3684,7 +3440,6 @@ private:
 
       double avgPrice = weightedPx / totalVol;
 
-      //--- Target TP distance in pips (always >= GridStep, plus offset for any prior realized loss)
       double targetRR  = GT_ResolveRR(m_rrMode, m_customRR);
       double baseTPPips = (m_sltpMode == GT_SLTP_RISK_REWARD) ? (m_fixedSLPips * targetRR) : m_fixedTPPips;
       if(baseTPPips < m_gridStepPips)
@@ -3702,7 +3457,6 @@ private:
       double tpPxDist    = pipConv.PipsToPrice(totalTPPips);
       double newTP       = pipConv.NormalizePrice((dir == GT_DIR_BUY) ? (avgPrice + tpPxDist) : (avgPrice - tpPxDist));
 
-      //--- Validate TP relative to current bid/ask StopsLevel
       double minStopPx = pipConv.PipsToPrice(pipConv.GetMinStopPips() + 0.5);
       double curBid    = SymbolInfoDouble(m_symbol, SYMBOL_BID);
       double curAsk    = SymbolInfoDouble(m_symbol, SYMBOL_ASK);
@@ -3757,6 +3511,8 @@ public:
       m_flipMustEndInTP      = true;
       m_flipAutoCoverLossTP  = false;
       m_alertsEnabled        = true;
+      m_abandonStuckCycle    = true;
+      m_ddHaltBar            = 0;
       m_lastEntrySignalBar   = 0;
       m_lastRuntimeWarning   = "";
       m_lastActionLog        = "Engine Initialized";
@@ -3811,6 +3567,7 @@ public:
       m_flipMustEndInTP      = flipMustEndInTP;
       m_flipAutoCoverLossTP  = flipAutoCoverLossTP;
       m_alertsEnabled        = alertsEnabled;
+      m_ddHaltBar            = 0;
 
       m_trade.SetExpertMagicNumber(m_magic);
       m_trade.SetDeviationInPoints(m_slippagePts);
@@ -3821,14 +3578,14 @@ public:
       SyncFromOpenPositions();
    }
 
+   //--- v1.32
+   void SetAbandonStuckCycle(const bool v) { m_abandonStuckCycle = v; }
+
    SRecoveryState GetState() const          { return m_state; }
    string         GetRuntimeWarning() const { return m_lastRuntimeWarning; }
    string         GetLastActionLog() const  { return m_lastActionLog; }
    void           ResetCycle()              { m_state.Reset(); }
 
-   //+----------------------------------------------------------------+
-   //| Query Live Open Positions Owned by This EA                     |
-   //+----------------------------------------------------------------+
    void QueryPositions(int &count,
                        double &floatingPL,
                        double &totalLots,
@@ -3871,9 +3628,6 @@ public:
       }
    }
 
-   //+----------------------------------------------------------------+
-   //| Restore Recovery State on Restart / Timeframe Switch           |
-   //+----------------------------------------------------------------+
    void SyncFromOpenPositions()
    {
       int count = 0;
@@ -3922,9 +3676,6 @@ public:
       }
    }
 
-   //+----------------------------------------------------------------+
-   //| Close All Open Positions (Optional Filter by Direction)        |
-   //+----------------------------------------------------------------+
    bool ClosePositions(const ENUM_GT_DIR filterDir = GT_DIR_NONE)
    {
       bool allClosed = true;
@@ -3958,9 +3709,6 @@ public:
       return allClosed;
    }
 
-   //+----------------------------------------------------------------+
-   //| Trade Transaction Handler (Detect SL/TP Closes Cleanly)        |
-   //+----------------------------------------------------------------+
    void OnDealTransaction(const MqlTradeTransaction &trans)
    {
       if(trans.type != TRADE_TRANSACTION_DEAL_ADD)
@@ -3985,14 +3733,12 @@ public:
       double dealPrice  = HistoryDealGetDouble(dealTicket, DEAL_PRICE);
       double dealVol    = HistoryDealGetDouble(dealTicket, DEAL_VOLUME);
 
-      //--- Closing deal of a BUY is DEAL_TYPE_SELL; closing deal of a SELL is DEAL_TYPE_BUY
       ENUM_GT_DIR closedPosDir = (dealType == DEAL_TYPE_SELL) ? GT_DIR_BUY : GT_DIR_SELL;
 
       m_state.realizedCyclePL += dealPL;
       if(dealVol > m_state.lastLot)
          m_state.lastLot = dealVol;
 
-      //--- If closing deliberately as part of a Flip transition, do not reset or arm Post-SL flag
       if(m_isFlipClosing)
          return;
 
@@ -4006,7 +3752,7 @@ public:
          bool directOnSL = (m_flipExecMode == GT_FLIP_DIRECT_ON_SL);
          bool flipLocked = (m_flipMustEndInTP && m_state.flipCycleLocked);
 
-         //--- 1. TP TERCAPAI -> Siklus TUNTAS! Reset ke Level 0 & izinkan mencari sinyal ICT/SMC/CRT baru
+         //--- 1. TP -> siklus tuntas, reset ke Level 0
          if(dealReason == DEAL_REASON_TP)
          {
             LogAction(StringFormat("%s TUNTAS TP! (Deal=%+.2f | Net Cycle=%+.2f) -> Reset ke Level 0, diizinkan mencari sinyal baru.",
@@ -4016,9 +3762,7 @@ public:
             return;
          }
 
-         //--- 2. MODE DIRECT FLIP SAAT SL:
-         //--- Buy kena SL -> langsung kunci Flip & siap buka Sell lot Martingale
-         //--- Sell kena SL -> langsung kunci Flip & siap buka Buy lot Martingale
+         //--- 2. Direct Flip saat SL
          if(directOnSL && (dealReason == DEAL_REASON_SL || dealPL < 0.0 || m_state.flipCycleLocked))
          {
             ENUM_GT_DIR nextFlipDir = (closedPosDir == GT_DIR_BUY) ? GT_DIR_SELL : GT_DIR_BUY;
@@ -4033,7 +3777,7 @@ public:
             return;
          }
 
-         //--- 3. SIKLUS FLIP TERKUNCI (HYBRID / PROB-GATED): WAJIB TUNTAS TP
+         //--- 3. Siklus Flip terkunci (Hybrid / Prob-Gated)
          if(flipLocked)
          {
             m_state.cycleActive         = true;
@@ -4069,7 +3813,7 @@ public:
    }
 
    //+----------------------------------------------------------------+
-   //| Main Tick Processing: Entry Engine + Dual Recovery Engine      |
+   //| Main Tick Processing                                           |
    //+----------------------------------------------------------------+
    void ProcessTick(const CPipConverter &pipConv,
                     const CIndicatorBridge &indBridge,
@@ -4083,10 +3827,9 @@ public:
       ENUM_GT_DIR openDir = GT_DIR_NONE;
       QueryPositions(openCount, fltPL, totalLots, openDir, lastPx, lastLot);
 
-      //--- Keep safety shield refreshed
       safety.Update(m_state.currentLevel, openCount, fltPL, m_state.pendingPostSLReEval);
 
-      //--- Emergency close-all if configured
+      //--- Emergency close-all
       if(safety.GetStatus().emergencyActive && safety.ShouldCloseAllOnEmergency() && openCount > 0)
       {
          LogAction("EMERGENCY STOP: Menutup seluruh posisi terbuka.");
@@ -4095,18 +3838,67 @@ public:
          return;
       }
 
-      //--- Check trade permission
       if(!TerminalInfoInteger(TERMINAL_TRADE_ALLOWED) || !MQLInfoInteger(MQL_TRADE_ALLOWED))
          return;
 
-      //--- Spread protection check
       if(m_maxSpreadPips > 0.0 && pipConv.GetSpreadPips() > m_maxSpreadPips)
          return;
 
       datetime curBarTime = iTime(m_symbol, m_tf, 0);
 
       //================================================================
-      // BRANCH 1: POST-SL RECOVERY (DIRECT FLIP / HYBRID / PROB-GATED)
+      // v1.32 PRE-BRANCH: ANTI-DEADLOCK + DD RESUME ON NEXT SIGNAL
+      //================================================================
+      {
+         SSafetyStatus st = safety.GetStatus();
+
+         //--- Catat bar saat DD pertama kali terdeteksi (sinyal "berikutnya" harus bar yang lebih baru)
+         if(st.maxDailyDDHit)
+         {
+            if(m_ddHaltBar == 0)
+               m_ddHaltBar = (ind.valid && ind.barTime > 0) ? ind.barTime : curBarTime;
+         }
+         else
+            m_ddHaltBar = 0;
+
+         if(openCount == 0)
+         {
+            bool cycleOpen   = (m_state.cycleActive || m_state.flipCycleLocked || m_state.pendingPostSLReEval);
+            bool ddHalt      = st.maxDailyDDHit;
+            bool lvExhausted = m_state.pendingPostSLReEval &&
+                               ((m_state.currentLevel + 1) > safety.MaxLevel());
+
+            //--- Batalkan siklus yang macet (tanpa posisi) agar EA tidak deadlock
+            if(m_abandonStuckCycle && cycleOpen && (ddHalt || lvExhausted))
+            {
+               LogAction(StringFormat("SIKLUS DIBATALKAN (%s) | Net Cycle=%+.2f -> Reset ke Level 0, menunggu sinyal baru.",
+                                      ddHalt ? "Daily DD tercapai" : "Max Martingale Level habis",
+                                      m_state.realizedCyclePL));
+               m_state.Reset();
+            }
+
+            //--- DD RESUME: buka kunci DD begitu ada sinyal valid pada bar yang lebih baru
+            if(ddHalt && safety.CanRearmAfterDD() &&
+               !m_state.flipCycleLocked && !m_state.pendingPostSLReEval)
+            {
+               bool freshSignal = ind.valid &&
+                                  ind.barTime > m_ddHaltBar &&
+                                  ind.barTime != m_lastEntrySignalBar &&
+                                  (indBridge.IsValidBuyEntry(ind) || indBridge.IsValidSellEntry(ind));
+               if(freshSignal)
+               {
+                  LogAction(StringFormat("DD RESUME: sinyal baru terdeteksi (%s) -> proteksi DD di-rearm, baseline DD harian dimulai ulang.",
+                                         ind.signalReason));
+                  safety.RearmAfterDD();
+                  safety.Update(0, 0, 0.0, false);
+                  m_ddHaltBar = 0;
+               }
+            }
+         }
+      }
+
+      //================================================================
+      // BRANCH 1: POST-SL RECOVERY
       //================================================================
       if(openCount == 0 && m_state.pendingPostSLReEval)
       {
@@ -4122,9 +3914,6 @@ public:
 
          if(useDirectFlipNow)
          {
-            //--- DIRECT ALTERNATING FLIP SAAT SL:
-            //--- Buy kena SL -> langsung Sell lot Martingale
-            //--- Sell kena SL -> langsung Buy lot Martingale (terus sampai TP!)
             ENUM_GT_DIR flipDir = (m_state.lastLostDir == GT_DIR_BUY) ? GT_DIR_SELL : GT_DIR_BUY;
             string tag = StringFormat("GT_FLIP_L%d", nextLevel);
 
@@ -4141,7 +3930,6 @@ public:
                m_state.pendingPostSLReEval = false;
                m_state.flipCount++;
 
-               //--- Keep probability dashboard informative for the newly opened Flip direction
                probEngine.Evaluate(flipDir, ctx, ind);
                LogAction(StringFormat("DIRECT FLIP EXECUTED: %s SL -> Langsung %s | Lot=%.2f | Level=%d [WAJIB TP]",
                                       GT_DirToString(m_state.lastLostDir),
@@ -4150,7 +3938,6 @@ public:
             return;
          }
 
-         //--- Probability-Gated / Pre-Flip Hybrid Evaluation
          SProbabilityDecision dec = probEngine.Evaluate(m_state.lastLostDir, ctx, ind);
          if(!dec.allowExecution)
             return;
@@ -4181,11 +3968,10 @@ public:
       }
 
       //================================================================
-      // BRANCH 2: INITIAL ENTRY ENGINE (Level 0 - ICT_SMC_CRT Primary)
+      // BRANCH 2: INITIAL ENTRY ENGINE (GT_ENTRY_L0)
       //================================================================
       if(openCount == 0)
       {
-         //--- Filosofi Flip Martingale: dilarang mencari sinyal baru selama siklus Flip belum tuntas TP!
          if(m_flipMustEndInTP && m_state.flipCycleLocked)
             return;
 
@@ -4229,16 +4015,12 @@ public:
       if(!m_state.cycleActive)
          SyncFromOpenPositions();
 
-      //--- Always refresh live probability snapshot for dashboard visibility
       SProbabilityDecision liveDec = probEngine.Evaluate(openDir, ctx, ind);
 
-      //--- Pada mode Direct Flip Saat SL (atau Hybrid yang sudah masuk siklus Flip),
-      //--- biarkan posisi tunggal selesai bersih ke SL atau TP tanpa menumpuk grid Klasik sebelum SL.
       if(m_flipExecMode == GT_FLIP_DIRECT_ON_SL ||
          (m_flipExecMode == GT_FLIP_HYBRID_LOCK && m_state.flipCycleLocked))
          return;
 
-      //--- Measure adverse distance from last entry price (Grid Step trigger)
       double bid = SymbolInfoDouble(m_symbol, SYMBOL_BID);
       double ask = SymbolInfoDouble(m_symbol, SYMBOL_ASK);
       double adversePips = 0.0;
@@ -4248,11 +4030,9 @@ public:
       else if(openDir == GT_DIR_SELL)
          adversePips = pipConv.PriceToPips(ask - m_state.lastEntryPrice);
 
-      //--- Loss / adverse grid movement ONLY triggers re-evaluation!
       if(adversePips < m_gridStepPips)
          return;
 
-      //--- Prevent multiple recovery actions on the exact same candle
       if(curBarTime == m_state.lastActionBarTime)
          return;
 
@@ -4261,8 +4041,6 @@ public:
 
       if(liveDec.mode == GT_REC_FLIP)
       {
-         //--- FLIP MARTINGALE: High-probability reversal detected!
-         //--- Close losing positions first, then open opposite direction with recovery lot.
          if(!safety.CanExecuteRecovery(nextLevel, true))
             return;
 
@@ -4294,7 +4072,6 @@ public:
       }
       else if(liveDec.mode == GT_REC_CLASSIC)
       {
-         //--- MARTINGALE KLASIK: Structure remains intact -> recover same direction!
          if(!liveDec.allowExecution)
             return;
          if(!safety.CanExecuteRecovery(nextLevel, false))
@@ -4320,14 +4097,6 @@ public:
       }
    }
 };
-
-
-//+------------------------------------------------------------------+
-//|                                            GT_SimulatorPanel.mqh |
-//|     GT Recovery Engine - Recovery Simulator & Live Dashboard     |
-//|   Auto-calculates Exposure, Drawdown & Recovery Target on chart  |
-//+------------------------------------------------------------------+
-
 
 #define GT_BTN_EMERGENCY  (GT_OBJ_PREFIX + "BTN_EMERG")
 
@@ -4458,9 +4227,6 @@ public:
       return m_metrics;
    }
 
-   //+----------------------------------------------------------------+
-   //| Automatically Compute All Recovery Simulator Metrics           |
-   //+----------------------------------------------------------------+
    SSimulatorMetrics CalculateSimulation(const CPipConverter &pipConv,
                                          const double initialLot,
                                          const double multiplier,
@@ -4483,7 +4249,6 @@ public:
       m.rrRatio        = rrRatio;
       m.pipValuePerLot = pipConv.GetPipValuePerLot();
 
-      //--- Effective SL / TP for simulation
       m.slPips = (fixedSLPips > 0.0) ? fixedSLPips : gridStepPips;
       if(sltpMode == GT_SLTP_RISK_REWARD)
          m.tpPips = m.slPips * rrRatio;
@@ -4492,7 +4257,6 @@ public:
       else
          m.tpPips = (fixedTPPips > 0.0) ? fixedTPPips : (m.slPips * rrRatio);
 
-      //--- Simulate broker-normalized lot ladder from Level 0 .. MaxLevel
       double levelLots[];
       ArrayResize(levelLots, m.maxLevel + 1);
 
@@ -4513,7 +4277,6 @@ public:
       m.totalExposureLots = totalExp;
       m.maxSingleLevelLot = levelLots[m.maxLevel];
 
-      //--- Worst-case Classic Grid Drawdown (all levels open + final SL adverse distance)
       double classicDDMoney = 0.0;
       double weightedDist   = 0.0;
       double flipDDMoney    = 0.0;
@@ -4537,19 +4300,14 @@ public:
          m.estFlipDrawdownPct    = (flipDDMoney / m.balance) * 100.0;
       }
 
-      //--- Target Recovery: distance to break-even + TP target from Max Level
       double avgDistToBEPips = (totalExp > 0.0) ? (weightedDist / totalExp) : 0.0;
       m.targetRecoveryPips   = avgDistToBEPips + m.tpPips;
-      //--- Net monetary recovery payout when basket hits TP (avg + tpPips)
       m.targetRecoveryMoney  = totalExp * m.tpPips * m.pipValuePerLot;
 
       m_metrics = m;
       return m;
    }
 
-   //+----------------------------------------------------------------+
-   //| Render / Update Dashboard & Simulator Panel                    |
-   //+----------------------------------------------------------------+
    void Render(const CPipConverter &pipConv,
                const SIndicatorData &ind,
                const SMarketContext &ctx,
@@ -4581,7 +4339,6 @@ public:
       int y = m_y;
       int w = m_width;
 
-      //--- Main container & header
       CreateRect(GT_OBJ_PREFIX + "BG", x, y, w, m_panelHeight, bgMain, borderClr, 1);
       CreateRect(GT_OBJ_PREFIX + "HDR", x, y, w, 30, bgHeader, borderClr, 1);
       SetLabel(GT_OBJ_PREFIX + "TITLE", x + 10, y + 7,
@@ -4590,9 +4347,7 @@ public:
       int secGap = 6;
       int lh     = 16;
 
-      //================================================================
-      // SECTION 1: RECOVERY SIMULATOR (AUTO-CALCULATED)
-      //================================================================
+      //--- SECTION 1: RECOVERY SIMULATOR
       int sec1Y = y + 36;
       int sec1H = 158;
       CreateRect(GT_OBJ_PREFIX + "SEC1", x + 8, sec1Y, w - 16, sec1H, bgSection, borderClr, 1);
@@ -4632,9 +4387,7 @@ public:
                StringFormat("Target Recovery : +%.2f %s (%.1f pip BE+TP)",
                             m_metrics.targetRecoveryMoney, cur, m_metrics.targetRecoveryPips), colGreen, 8);
 
-      //================================================================
-      // SECTION 2: AUTO PIP & ICT_SMC_CRT SIGNAL ENGINE STATUS
-      //================================================================
+      //--- SECTION 2: AUTO PIP & SIGNAL ENGINE
       int sec2Y = sec1Y + sec1H + secGap;
       int sec2H = 94;
       CreateRect(GT_OBJ_PREFIX + "SEC2", x + 8, sec2Y, w - 16, sec2H, bgSection, borderClr, 1);
@@ -4673,9 +4426,7 @@ public:
                TruncateText("Sinyal: " + ind.signalReason, 54),
                (ind.buySignal ? colGreen : (ind.sellSignal ? colRed : clrMuted)), 8);
 
-      //================================================================
-      // SECTION 3: LIVE RECOVERY & PROBABILITY ENGINE
-      //================================================================
+      //--- SECTION 3: PROBABILITY & RECOVERY
       int sec3Y = sec2Y + sec2H + secGap;
       int sec3H = 126;
       CreateRect(GT_OBJ_PREFIX + "SEC3", x + 8, sec3Y, w - 16, sec3H, bgSection, borderClr, 1);
@@ -4718,9 +4469,7 @@ public:
       SetLabel(GT_OBJ_PREFIX + "PROB_FAC2", x + 16, rowY,
                TruncateText("Kont: " + dec.activeContinuationFactors, 54), clrMuted, 8);
 
-      //================================================================
-      // SECTION 4: SAFETY SHIELD & WARNINGS + EMERGENCY BUTTON
-      //================================================================
+      //--- SECTION 4: SAFETY + EMERGENCY BUTTON
       int sec4Y = sec3Y + sec3H + secGap;
       int sec4H = 88;
       color sec4Border = safety.tradingHalted ? colRed : (validationWarning != "" ? colAmber : borderClr);
@@ -4733,9 +4482,9 @@ public:
       rowY = sec4Y + 22;
 
       SetLabel(GT_OBJ_PREFIX + "SAFE_DD", x + 16, rowY,
-               StringFormat("Daily DD: %.2f%% | Status: %s",
+               StringFormat("Daily DD: %.2f%% | %s",
                             safety.currentDailyDDPct,
-                            TruncateText(safety.haltReason, 31)),
+                            TruncateText(safety.haltReason, 40)),
                safety.tradingHalted ? colRed : clrText, 8);
       rowY += lh;
 
@@ -4745,7 +4494,6 @@ public:
                warnText, (validationWarning != "" ? colAmber : colGreen), 8);
       rowY += lh + 4;
 
-      //--- Interactive Emergency Stop Button
       string btnText = safety.emergencyActive ? "RESUME ENGINE (EMERGENCY ACTIVE)" : "EMERGENCY STOP";
       color  btnBg   = safety.emergencyActive ? C'180,40,40' : C'120,30,36';
       CreateButton(GT_BTN_EMERGENCY, x + 16, rowY, w - 32, 22, btnText, clrWhite, btnBg, colRed);
@@ -4755,11 +4503,9 @@ public:
    }
 };
 
-
-
-
 //+------------------------------------------------------------------+
 //| INPUT PARAMETERS                                                 |
+//+------------------------------------------------------------------+
 input group "=== 1. Sumber Sinyal ICT + SMC + CRT (All-in-One Default) ==="
 input ENUM_GT_SIGNAL_SOURCE     InpSignalSource         = GT_SRC_INTERNAL_ALL_IN_ONE; // Mode Sumber Sinyal (Default: All-in-One 1 File)
 input ENUM_TIMEFRAMES           InpIndTimeframe         = PERIOD_CURRENT;             // Timeframe Sinyal & Struktur
@@ -4851,6 +4597,11 @@ input int                     InpMaxOpenPositions       = 6;                 // 
 input bool                    InpEmergencyStop          = false;             // Emergency Stop (Hentikan Semua Aktivitas)
 input bool                    InpCloseAllOnEmergency    = false;             // Tutup Semua Posisi Saat Emergency Stop Aktif
 
+input group "=== 7B. Resume Setelah Daily Drawdown (v1.32) ==="
+input bool                    InpDDResumeOnSignal       = true;              // Setelah DD Tercapai: Entry Lagi pada Sinyal Berikutnya (Tanpa Tunggu Hari Baru)
+input int                     InpMaxDDResumePerDay      = 0;                 // Batas Resume DD per Hari (0 = Tanpa Batas)
+input bool                    InpAbandonCycleOnHalt     = true;              // Batalkan Siklus Flip yang Macet (DD / Max Level) lalu Mulai Lagi dari L0
+
 input group "=== 8. Panel Simulator & Pengaturan Umum ==="
 input bool                    InpShowPanel              = true;              // Tampilkan Panel Recovery Simulator
 input int                     InpPanelX                 = 14;                // Posisi X Panel
@@ -4859,7 +4610,9 @@ input long                    InpMagicNumber            = 20261121;          // 
 input int                     InpSlippagePoints         = 20;                // Slippage Maksimal (Points)
 input bool                    InpEnableAlerts           = true;              // Aktifkan Pop-Up Alert
 
+//+------------------------------------------------------------------+
 //| GLOBAL MODULE INSTANCES                                          |
+//+------------------------------------------------------------------+
 CPipConverter      g_pipConv;
 CIndicatorBridge   g_indBridge;
 CMarketStructure   g_structure;
@@ -4868,7 +4621,6 @@ CSafetyManager     g_safety;
 CRecoveryEngine    g_engine;
 CSimulatorPanel    g_panel;
 
-//--- Resolved runtime parameters
 double             g_gridStepPips     = 20.0;
 double             g_multiplier       = 1.5;
 double             g_rrRatio          = 2.0;
@@ -4876,7 +4628,9 @@ string             g_initWarning      = "";
 datetime           g_lastStructBar    = 0;
 datetime           g_lastPanelRefresh = 0;
 
+//+------------------------------------------------------------------+
 //| Helper: Refresh Simulator Calculation & Panel UI                 |
+//+------------------------------------------------------------------+
 void UpdateDashboard(const SIndicatorData &ind,
                      const SMarketContext &ctx)
 {
@@ -4908,26 +4662,25 @@ void UpdateDashboard(const SIndicatorData &ind,
                   g_indBridge.GetSourceLabel());
 }
 
+//+------------------------------------------------------------------+
 //| Expert initialization function                                   |
+//+------------------------------------------------------------------+
 int OnInit()
 {
    g_initWarning      = "";
    g_lastStructBar    = 0;
    g_lastPanelRefresh = 0;
 
-   //--- 1. Initialize Auto Pip Converter
    if(!g_pipConv.Init(_Symbol, InpAssetClass, InpCustomPipSize))
    {
       Print("[GT Recovery Engine][ERROR] Gagal inisialisasi Auto Pip Converter untuk ", _Symbol);
       return INIT_FAILED;
    }
 
-   //--- 2. Resolve Grid Step, Lot Multiplier & RR Presets
    g_gridStepPips = GT_ResolveGridStepPips(InpGridStepMode, InpCustomGridStepPips);
    g_multiplier   = GT_ResolveMultiplier(InpMultiplierMode, InpCustomMultiplier);
    g_rrRatio      = GT_ResolveRR(InpRRMode, InpCustomRR);
 
-   //--- 3. Mandatory Validation (TP >= Grid Step & RR Consistency)
    SValidationResult vr = CConfigValidator::ValidateInit(g_pipConv,
                                                          InpSLTPMode,
                                                          InpRRMode,
@@ -4957,7 +4710,6 @@ int OnInit()
          Alert("[GT Recovery Engine] ", vr.warningMessage);
    }
 
-   //--- 4. Initialize ICT + SMC + CRT Market Structure Engine
    ENUM_TIMEFRAMES workTF = (InpIndTimeframe == PERIOD_CURRENT) ? Period() : InpIndTimeframe;
    g_structure.Init(_Symbol,
                     workTF,
@@ -4973,7 +4725,6 @@ int OnInit()
                     InpUseNYAMKZ,   InpNYAMKZTime,
                     InpUseNYPMKZ,   InpNYPMKZTime);
 
-   //--- 5. Initialize Unified Signal Source (All-in-One Internal OR External iCustom)
    if(!g_indBridge.Init(InpSignalSource,
                         _Symbol,
                         workTF,
@@ -4992,7 +4743,6 @@ int OnInit()
       return INIT_FAILED;
    }
 
-   //--- 6. Configure Probability Scoring & Hierarchy Engine
    SScoreWeights w;
    w.enabled                        = InpUseScoreSystem;
    w.flipThreshold                  = InpFlipScoreThreshold;
@@ -5020,7 +4770,6 @@ int OnInit()
    w.requireIntactStructureForClassic = InpRequireIntactForClassic;
    g_probEngine.Configure(w);
 
-   //--- 7. Initialize Safety Shield
    g_safety.Init(_Symbol,
                  InpMagicNumber,
                  InpMaxMartingaleLevel,
@@ -5031,8 +4780,8 @@ int OnInit()
                  InpEmergencyStop,
                  InpCloseAllOnEmergency,
                  InpEnableAlerts);
+   g_safety.ConfigureDDResume(InpDDResumeOnSignal, InpMaxDDResumePerDay);
 
-   //--- 8. Initialize Entry & Dual Recovery Engine
    g_engine.Init(_Symbol,
                  workTF,
                  InpMagicNumber,
@@ -5056,8 +4805,8 @@ int OnInit()
                  InpFlipMustEndInTP,
                  InpFlipAutoCoverLossTP,
                  InpEnableAlerts);
+   g_engine.SetAbandonStuckCycle(InpAbandonCycleOnHalt);
 
-   //--- 9. Initialize Recovery Simulator Panel & Render Immediately
    g_panel.Init(InpShowPanel, InpPanelX, InpPanelY);
 
    g_structure.Update(g_pipConv);
@@ -5082,19 +4831,21 @@ int OnInit()
    Comment("");
    UpdateDashboard(initInd, g_structure.GetContext());
 
-   //--- Timer keeps Simulator Panel live even during low-tick periods
    if(!MQLInfoInteger(MQL_OPTIMIZATION))
       EventSetTimer(1);
 
-   PrintFormat("[GT Recovery Engine] SIAP | Symbol=%s (%s, %d digits, 1 pip=%.0f pts) | Grid=%.1f pip | Mult=%.2fx | RR=1:%.2f | MaxLv=%d",
+   PrintFormat("[GT Recovery Engine] SIAP v1.32 | Symbol=%s (%s, %d digits, 1 pip=%.0f pts) | Grid=%.1f pip | Mult=%.2fx | RR=1:%.2f | MaxLv=%d | DD Resume=%s",
                _Symbol, g_pipConv.GetAssetClassName(), g_pipConv.Digits(),
                g_pipConv.PointsPerPip(), g_gridStepPips, g_multiplier,
-               g_rrRatio, InpMaxMartingaleLevel);
+               g_rrRatio, InpMaxMartingaleLevel,
+               InpDDResumeOnSignal ? "SINYAL BARU" : "HARI BERIKUTNYA");
 
    return INIT_SUCCEEDED;
 }
 
+//+------------------------------------------------------------------+
 //| Expert deinitialization function                                 |
+//+------------------------------------------------------------------+
 void OnDeinit(const int reason)
 {
    EventKillTimer();
@@ -5103,12 +4854,13 @@ void OnDeinit(const int reason)
    Comment("");
 }
 
+//+------------------------------------------------------------------+
 //| Expert tick function                                             |
+//+------------------------------------------------------------------+
 void OnTick()
 {
    ENUM_TIMEFRAMES workTF = (InpIndTimeframe == PERIOD_CURRENT) ? Period() : InpIndTimeframe;
 
-   //--- 1. Refresh ICT + SMC + CRT Market Structure on each new bar + live intrabar zones/KZ
    datetime curBarTime = iTime(_Symbol, workTF, 0);
    if(curBarTime != g_lastStructBar)
    {
@@ -5119,14 +4871,11 @@ void OnTick()
 
    SMarketContext ctx = g_structure.GetContext();
 
-   //--- 2. Refresh Signal Engine (All-in-One Internal ICT+SMC+CRT OR External iCustom)
    SIndicatorData indData;
    g_indBridge.Refresh(ctx, g_pipConv, indData);
 
-   //--- 3. Execute Entry Engine & Probability-Driven Dual Recovery Engine
    g_engine.ProcessTick(g_pipConv, g_indBridge, indData, ctx, g_probEngine, g_safety);
 
-   //--- 4. Refresh Dashboard & Simulator Panel (throttled for performance)
    if(InpShowPanel && !MQLInfoInteger(MQL_OPTIMIZATION))
    {
       datetime now = TimeCurrent();
@@ -5138,7 +4887,9 @@ void OnTick()
    }
 }
 
-//| Trade transaction handler (detects SL/TP close events cleanly)   |
+//+------------------------------------------------------------------+
+//| Trade transaction handler                                        |
+//+------------------------------------------------------------------+
 void OnTradeTransaction(const MqlTradeTransaction &trans,
                         const MqlTradeRequest     &request,
                         const MqlTradeResult      &result)
@@ -5146,7 +4897,9 @@ void OnTradeTransaction(const MqlTradeTransaction &trans,
    g_engine.OnDealTransaction(trans);
 }
 
-//| Timer handler (auto-refreshes simulator on live charts)          |
+//+------------------------------------------------------------------+
+//| Timer handler                                                    |
+//+------------------------------------------------------------------+
 void OnTimer()
 {
    if(!InpShowPanel || MQLInfoInteger(MQL_OPTIMIZATION) || MQLInfoInteger(MQL_TESTER))
@@ -5160,7 +4913,9 @@ void OnTimer()
    UpdateDashboard(g_indBridge.GetLastData(), g_structure.GetContext());
 }
 
+//+------------------------------------------------------------------+
 //| ChartEvent handler (Emergency Stop button toggle)                |
+//+------------------------------------------------------------------+
 void OnChartEvent(const int id,
                   const long &lparam,
                   const double &dparam,
